@@ -80,11 +80,13 @@ $(
   printf "%s\n" "${PATH}" \
     | tr ':' '\n' \
     | sed 's:^~:'"$(realpath ~)"':' \
+    | tr '\n' '\0' \
     | xargs \
+        -0 \
         -P 8 \
         -I {} \
-        sh -c 'find {} -maxdepth 1 -type f -executable \
-          || find {} -maxdepth 1 -type f -perm +0111' \
+        sh -c "find '{}' -maxdepth 1 -type f -executable \
+          || find '{}' -maxdepth 1 -type f -perm +0111" \
     | xargs -P 8 -I {} basename "{}" \
     | sort \
     | uniq \
