@@ -109,6 +109,8 @@ if "${COMMAND}" --help > /dev/null 2>&1; then
   HELP="$("${COMMAND}" --help 2>&1)"
 elif "${COMMAND}" -h > /dev/null 2>&1; then
   HELP="$("${COMMAND}" -h 2>&1)"
+elif man "${COMMAND}" > /dev/null 2>&1; then
+  HELP="$(man "${COMMAND}" 2>&1)"
 elif "${COMMAND}" > /dev/null 2>&1; then
   HELP="$("${COMMAND}" 2>&1)"
 else
@@ -133,7 +135,7 @@ ARGS_WITH_DESCRIPTIONS="$(
     | tr '\r' '   ' \
     | sed 's/^\(-[^ ][^ ]*\) \(-[^ ][^ ]*\)/\1,\2/g' \
     | sed 's/,  *-/,-/g' \
-    | sed 's/\(--*[^ ][^ ]*\) \([^ ][^ ]*\)   */\1=\2  /g' \
+    | sed 's/\(--*[^ ][^ ]*\) \([^ ][^ ]*\)\(   *\|\t\)/\1=\2  /g' \
     | grep '^[[:space:]]*-' \
     | grep -v '^\(- *\)\(- *\)*$' \
     | sed 's/[[:space:]][[:space:]]*/ /g' \
