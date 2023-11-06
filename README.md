@@ -107,6 +107,14 @@ Please [open an issue](https://github.com/jstrieb/webash/issues/new) with any
 bugs, suggestions, or questions. 
 
 
+## Known Issues
+
+Webash can only automatically extract command-line arguments from the most
+common help text formats. It uses simple regular expression-based normalization
+and pattern matching, and is therefore somewhat brittle. It is also not
+particularly performant.
+
+
 # Support the Project
 
 There are a few ways to support the project:
