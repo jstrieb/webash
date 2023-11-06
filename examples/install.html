@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>install GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "install";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>install</p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/install" method="GET" class="vbox">
+<label title="--backup[=CONTROL]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[CONTROL]" name="backup" disabled="disabled">make a backup of each existing destination file </label>
+<label title="-b"><input type="checkbox" value="" name="-b" onchange="update()">like --backup but does not accept an argument </label>
+<label title="-c"><input type="checkbox" value="" name="-c" onchange="update()">(ignored) </label>
+<label title="--compare"><input type="checkbox" value="" name="--compare" onchange="update()">compare
+ content of source and destination files, and if no change to content, 
+ownership, and permissions, do not modify the destination at all </label>
+<label title="--directory"><input type="checkbox" value="" name="--directory" onchange="update()">treat all arguments as directory names; create all components of the specified directories </label>
+<label title="-D"><input type="checkbox" value="" name="-D" onchange="update()">create all leading components of DEST except the last, or all components of --target-directory, then copy SOURCE to DEST </label>
+<label title="--group=GROUP"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="GROUP" name="group" disabled="disabled">set group ownership, instead of process' current group </label>
+<label title="--mode=MODE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MODE" name="mode" disabled="disabled">set permission mode (as in chmod), instead of rwxr-xr-x </label>
+<label title="--owner=OWNER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="OWNER" name="owner" disabled="disabled">set ownership (super-user only) </label>
+<label title="--preserve-timestamps"><input type="checkbox" value="" name="--preserve-timestamps" onchange="update()">apply access/modification times of SOURCE files to corresponding destination files </label>
+<label title="--strip"><input type="checkbox" value="" name="--strip" onchange="update()">strip symbol tables </label>
+<label title="--strip-program=PROGRAM"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="PROGRAM" name="strip-program" disabled="disabled">program used to strip binaries </label>
+<label title="--suffix=SUFFIX"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="SUFFIX" name="suffix" disabled="disabled">override the usual backup suffix </label>
+<label title="--target-directory=DIRECTORY"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="DIRECTORY" name="target-directory" disabled="disabled">copy all SOURCE arguments into DIRECTORY </label>
+<label title="--no-target-directory"><input type="checkbox" value="" name="--no-target-directory" onchange="update()">treat DEST as a normal file </label>
+<label title="--verbose"><input type="checkbox" value="" name="--verbose" onchange="update()">print the name of each directory as it is created </label>
+<label title="--preserve-context"><input type="checkbox" value="" name="--preserve-context" onchange="update()">preserve SELinux security context </label>
+<label title="-Z"><input type="checkbox" value="" name="-Z" onchange="update()">set SELinux security context of destination file and each created directory to default type </label>
+<label title="--context[=CTX]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[CTX]" name="context" disabled="disabled">like -Z, or if CTX is specified then set the SELinux or SMACK security context to CTX </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">display this help and exit </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">output version information and exit </label>
+</form>
+<hr>
+<pre class="short"><code>Usage: install [OPTION]... [-T] SOURCE DEST
+  or:  install [OPTION]... SOURCE... DIRECTORY
+  or:  install [OPTION]... -t DIRECTORY SOURCE...
+  or:  install [OPTION]... -d DIRECTORY...
+
+This install program copies files (often just compiled) into destination
+locations you choose.  If you want to download and install a ready-to-use
+package on a GNU/Linux system, you should instead be using a package manager
+like yum(1) or apt-get(1).
+
+In the first three forms, copy SOURCE to DEST or multiple SOURCE(s) to
+the existing DIRECTORY, while setting permission modes and owner/group.
+In the 4th form, create all components of the given DIRECTORY(ies).
+
+Mandatory arguments to long options are mandatory for short options too.
+      --backup[=CONTROL]  make a backup of each existing destination file
+  -b                  like --backup but does not accept an argument
+  -c                  (ignored)
+  -C, --compare       compare content of source and destination files, and
+                        if no change to content, ownership, and permissions,
+                        do not modify the destination at all
+  -d, --directory     treat all arguments as directory names; create all
+                        components of the specified directories
+  -D                  create all leading components of DEST except the last,
+                        or all components of --target-directory,
+                        then copy SOURCE to DEST
+  -g, --group=GROUP   set group ownership, instead of process' current group
+  -m, --mode=MODE     set permission mode (as in chmod), instead of rwxr-xr-x
+  -o, --owner=OWNER   set ownership (super-user only)
+  -p, --preserve-timestamps   apply access/modification times of SOURCE files
+                        to corresponding destination files
+  -s, --strip         strip symbol tables
+      --strip-program=PROGRAM  program used to strip binaries
+  -S, --suffix=SUFFIX  override the usual backup suffix
+  -t, --target-directory=DIRECTORY  copy all SOURCE arguments into DIRECTORY
+  -T, --no-target-directory  treat DEST as a normal file
+  -v, --verbose       print the name of each directory as it is created
+      --preserve-context  preserve SELinux security context
+  -Z                      set SELinux security context of destination
+                            file and each created directory to default type
+      --context[=CTX]     like -Z, or if CTX is specified then set the
+                            SELinux or SMACK security context to CTX
+      --help        display this help and exit
+      --version     output version information and exit
+
+The backup suffix is '~', unless set with --suffix or SIMPLE_BACKUP_SUFFIX.
+The version control method may be selected via the --backup option or through
+the VERSION_CONTROL environment variable.  Here are the values:
+
+  none, off       never make backups (even if --backup is given)
+  numbered, t     make numbered backups
+  existing, nil   numbered if numbered backups exist, simple otherwise
+  simple, never   always make simple backups
+
+GNU coreutils online help: &lt;https://www.gnu.org/software/coreutils/&gt;
+Report any translation bugs to &lt;https://translationproject.org/team/&gt;
+Full documentation &lt;https://www.gnu.org/software/coreutils/install&gt;
+or available locally via: info '(coreutils) install invocation'</code></pre>
+
+
+</body></html>

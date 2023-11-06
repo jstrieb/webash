@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>xargs GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "xargs";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>xargs  </p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/xargs" method="GET" class="vbox">
+<label title="--null"><input type="checkbox" value="" name="--null" onchange="update()">items are separated by a null, not whitespace; disables quote and backslash processing and logical EOF processing </label>
+<label title="--arg-file=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="arg-file" disabled="disabled">read arguments from FILE, not standard input </label>
+<label title="--delimiter=CHARACTER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="CHARACTER" name="delimiter" disabled="disabled">items
+ in input stream are separated by CHARACTER, not by whitespace; disables
+ quote and backslash processing and logical EOF processing </label>
+<label title="-E=END"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="END" name="E" disabled="disabled">set logical EOF string; if END occurs as a line of input, the rest of the input is ignored (ignored if -0 or -d was specified) </label>
+<label title="--eof[=END]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[END]" name="eof" disabled="disabled">equivalent to -E END if END is specified; otherwise, there is no end-of-file string </label>
+<label title="-I=R"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="R" name="I" disabled="disabled">same as --replace=R </label>
+<label title="--replace[=R]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[R]" name="replace" disabled="disabled">replace R in INITIAL-ARGS with names read from standard input, split at newlines; if R is unspecified, assume {} </label>
+<label title="--max-lines=MAX-LINES"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MAX-LINES" name="max-lines" disabled="disabled">use at most MAX-LINES non-blank input lines per command line </label>
+<label title="-l[MAX-LINES]"><input type="checkbox" value="" name="-l[MAX-LINES]" onchange="update()">similar to -L but defaults to at most one non- blank input line if MAX-LINES is not specified </label>
+<label title="--max-args=MAX-ARGS"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MAX-ARGS" name="max-args" disabled="disabled">use at most MAX-ARGS arguments per command line </label>
+<label title="--open-tty"><input type="checkbox" value="" name="--open-tty" onchange="update()">Reopen stdin as /dev/tty in the child process before executing the command; useful to run an interactive application. </label>
+<label title="--max-procs=MAX-PROCS"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MAX-PROCS" name="max-procs" disabled="disabled">run at most MAX-PROCS processes at a time </label>
+<label title="--interactive"><input type="checkbox" value="" name="--interactive" onchange="update()">prompt before running commands </label>
+<label title="--process-slot-var=VAR"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="VAR" name="process-slot-var" disabled="disabled">set environment variable VAR in child processes </label>
+<label title="--no-run-if-empty"><input type="checkbox" value="" name="--no-run-if-empty" onchange="update()">if there are no arguments, then do not run COMMAND; if this option is not given, COMMAND will be run at least once </label>
+<label title="--max-chars=MAX-CHARS"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MAX-CHARS" name="max-chars" disabled="disabled">limit length of command line to MAX-CHARS </label>
+<label title="--show-limits"><input type="checkbox" value="" name="--show-limits" onchange="update()">show limits on command-line length </label>
+<label title="--verbose"><input type="checkbox" value="" name="--verbose" onchange="update()">print commands before executing them </label>
+<label title="--exit"><input type="checkbox" value="" name="--exit" onchange="update()">exit if the size (see -s) is exceeded </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">display this help and exit </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">output version information and exit </label>
+</form>
+<hr>
+<pre class="short"><code>Usage: xargs [OPTION]... COMMAND [INITIAL-ARGS]...
+Run COMMAND with arguments INITIAL-ARGS and more arguments read from input.
+
+Mandatory and optional arguments to long options are also
+mandatory or optional for the corresponding short option.
+  -0, --null                   items are separated by a null, not whitespace;
+                                 disables quote and backslash processing and
+                                 logical EOF processing
+  -a, --arg-file=FILE          read arguments from FILE, not standard input
+  -d, --delimiter=CHARACTER    items in input stream are separated by CHARACTER,
+                                 not by whitespace; disables quote and backslash
+                                 processing and logical EOF processing
+  -E END                       set logical EOF string; if END occurs as a line
+                                 of input, the rest of the input is ignored
+                                 (ignored if -0 or -d was specified)
+  -e, --eof[=END]              equivalent to -E END if END is specified;
+                                 otherwise, there is no end-of-file string
+  -I R                         same as --replace=R
+  -i, --replace[=R]            replace R in INITIAL-ARGS with names read
+                                 from standard input, split at newlines;
+                                 if R is unspecified, assume {}
+  -L, --max-lines=MAX-LINES    use at most MAX-LINES non-blank input lines per
+                                 command line
+  -l[MAX-LINES]                similar to -L but defaults to at most one non-
+                                 blank input line if MAX-LINES is not specified
+  -n, --max-args=MAX-ARGS      use at most MAX-ARGS arguments per command line
+  -o, --open-tty               Reopen stdin as /dev/tty in the child process
+                                 before executing the command; useful to run an
+                                 interactive application.
+  -P, --max-procs=MAX-PROCS    run at most MAX-PROCS processes at a time
+  -p, --interactive            prompt before running commands
+      --process-slot-var=VAR   set environment variable VAR in child processes
+  -r, --no-run-if-empty        if there are no arguments, then do not run COMMAND;
+                                 if this option is not given, COMMAND will be
+                                 run at least once
+  -s, --max-chars=MAX-CHARS    limit length of command line to MAX-CHARS
+      --show-limits            show limits on command-line length
+  -t, --verbose                print commands before executing them
+  -x, --exit                   exit if the size (see -s) is exceeded
+      --help                   display this help and exit
+      --version                output version information and exit
+
+Please see also the documentation at https://www.gnu.org/software/findutils/.
+You can report (and track progress on fixing) bugs in the "xargs"
+program via the GNU findutils bug-reporting page at
+https://savannah.gnu.org/bugs/?group=findutils or, if
+you have no web access, by sending email to &lt;bug-findutils@gnu.org&gt;.</code></pre>
+
+
+</body></html>

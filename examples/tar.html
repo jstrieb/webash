@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>tar GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "tar";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>tar  </p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/tar" method="GET" class="vbox">
+<label title="--concatenate"><input type="checkbox" value="" name="--concatenate" onchange="update()">append tar files to an archive </label>
+<label title="--create"><input type="checkbox" value="" name="--create" onchange="update()">create a new archive </label>
+<label title="--delete"><input type="checkbox" value="" name="--delete" onchange="update()">delete from the archive (not on mag tapes!) </label>
+<label title="--compare"><input type="checkbox" value="" name="--compare" onchange="update()">find differences between archive and file system </label>
+<label title="--append"><input type="checkbox" value="" name="--append" onchange="update()">append files to the end of an archive </label>
+<label title="--test-label"><input type="checkbox" value="" name="--test-label" onchange="update()">test the archive volume label and exit </label>
+<label title="--list"><input type="checkbox" value="" name="--list" onchange="update()">list the contents of an archive </label>
+<label title="--update"><input type="checkbox" value="" name="--update" onchange="update()">only append files newer than copy in archive </label>
+<label title="--get"><input type="checkbox" value="" name="--get" onchange="update()">extract files from an archive </label>
+<label title="--check-device"><input type="checkbox" value="" name="--check-device" onchange="update()">check device numbers when creating incremental archives (default) </label>
+<label title="--listed-incremental=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="listed-incremental" disabled="disabled">handle new GNU-format incremental backup </label>
+<label title="--incremental"><input type="checkbox" value="" name="--incremental" onchange="update()">handle old GNU-format incremental backup </label>
+<label title="--hole-detection=TYPE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="TYPE" name="hole-detection" disabled="disabled">technique to detect holes </label>
+<label title="--ignore-failed-read"><input type="checkbox" value="" name="--ignore-failed-read" onchange="update()">do not exit with nonzero on unreadable files </label>
+<label title="--level=NUMBER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NUMBER" name="level" disabled="disabled">dump level for created listed-incremental archive </label>
+<label title="--no-check-device"><input type="checkbox" value="" name="--no-check-device" onchange="update()">do not check device numbers when creating incremental archives </label>
+<label title="--no-seek"><input type="checkbox" value="" name="--no-seek" onchange="update()">archive is not seekable </label>
+<label title="--seek"><input type="checkbox" value="" name="--seek" onchange="update()">archive is seekable </label>
+<label title="--occurrence[=NUMBER]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[NUMBER]" name="occurrence" disabled="disabled">process
+ only the NUMBERth occurrence of each file in the archive; this option 
+is valid only in conjunction with one of the subcommands --delete, </label>
+<label title="--extract"><input type="checkbox" value="" name="--extract" onchange="update()">or --list and when a list of files is given either on the command line or via the -T option; NUMBER defaults to 1 </label>
+<label title="--sparse-version=MAJOR[.MINOR]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MAJOR[.MINOR]" name="sparse-version" disabled="disabled">set version of the sparse format to use (implies </label>
+<label title="--sparse)"><input type="checkbox" value="" name="--sparse)" onchange="update()">--sparse)</label>
+<label title="--sparse"><input type="checkbox" value="" name="--sparse" onchange="update()">handle sparse files efficiently </label>
+<label title="--add-file=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="add-file" disabled="disabled">add given FILE to the archive (useful if its name starts with a dash) </label>
+<label title="--directory=DIR"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="DIR" name="directory" disabled="disabled">change to directory DIR </label>
+<label title="--exclude=PATTERN"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="PATTERN" name="exclude" disabled="disabled">exclude files, given as a PATTERN </label>
+<label title="--exclude-backups"><input type="checkbox" value="" name="--exclude-backups" onchange="update()">exclude backup and lock files </label>
+<label title="--exclude-caches"><input type="checkbox" value="" name="--exclude-caches" onchange="update()">exclude contents of directories containing CACHEDIR.TAG, except for the tag file itself </label>
+<label title="--exclude-caches-all"><input type="checkbox" value="" name="--exclude-caches-all" onchange="update()">exclude directories containing CACHEDIR.TAG </label>
+<label title="--exclude-caches-under"><input type="checkbox" value="" name="--exclude-caches-under" onchange="update()">exclude everything under directories containing CACHEDIR.TAG </label>
+<label title="--exclude-ignore=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="exclude-ignore" disabled="disabled">read exclude patterns for each directory from FILE, if it exists </label>
+<label title="--exclude-ignore-recursive=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="exclude-ignore-recursive" disabled="disabled">read exclude patterns for each directory and its subdirectories from FILE, if it exists </label>
+<label title="--exclude-tag=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="exclude-tag" disabled="disabled">exclude contents of directories containing FILE, except for FILE itself </label>
+<label title="--exclude-tag-all=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="exclude-tag-all" disabled="disabled">exclude directories containing FILE </label>
+<label title="--exclude-tag-under=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="exclude-tag-under" disabled="disabled">exclude everything under directories containing FILE </label>
+<label title="--exclude-vcs"><input type="checkbox" value="" name="--exclude-vcs" onchange="update()">exclude version control system directories </label>
+<label title="--exclude-vcs-ignores"><input type="checkbox" value="" name="--exclude-vcs-ignores" onchange="update()">read exclude patterns from the VCS ignore files </label>
+<label title="--no-null"><input type="checkbox" value="" name="--no-null" onchange="update()">disable the effect of the previous --null option </label>
+<label title="--no-recursion"><input type="checkbox" value="" name="--no-recursion" onchange="update()">avoid descending automatically in directories </label>
+<label title="--no-unquote"><input type="checkbox" value="" name="--no-unquote" onchange="update()">do not unquote input file or member names </label>
+<label title="--no-verbatim-files-from"><input type="checkbox" value="" name="--no-verbatim-files-from" onchange="update()">-T treats file names starting with dash as options (default) </label>
+<label title="--null"><input type="checkbox" value="" name="--null" onchange="update()">-T reads null-terminated names; implies </label>
+<label title="--verbatim-files-from"><input type="checkbox" value="" name="--verbatim-files-from" onchange="update()">--verbatim-files-from</label>
+<label title="--recursion"><input type="checkbox" value="" name="--recursion" onchange="update()">recurse into directories (default) </label>
+<label title="--files-from=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="files-from" disabled="disabled">get names to extract or create from FILE </label>
+<label title="--unquote"><input type="checkbox" value="" name="--unquote" onchange="update()">unquote input file or member names (default) </label>
+<label title="--verbatim-files-from"><input type="checkbox" value="" name="--verbatim-files-from" onchange="update()">-T reads file names verbatim (no escape or option handling) </label>
+<label title="--exclude-from=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="exclude-from" disabled="disabled">exclude patterns listed in FILE </label>
+<label title="--anchored"><input type="checkbox" value="" name="--anchored" onchange="update()">patterns match file name start </label>
+<label title="--ignore-case"><input type="checkbox" value="" name="--ignore-case" onchange="update()">ignore case </label>
+<label title="--no-anchored"><input type="checkbox" value="" name="--no-anchored" onchange="update()">patterns match after any '/' (default for exclusion) </label>
+<label title="--no-ignore-case"><input type="checkbox" value="" name="--no-ignore-case" onchange="update()">case sensitive matching (default) </label>
+<label title="--no-wildcards"><input type="checkbox" value="" name="--no-wildcards" onchange="update()">verbatim string matching </label>
+<label title="--no-wildcards-match-slash"><input type="checkbox" value="" name="--no-wildcards-match-slash" onchange="update()">wildcards do not match '/' </label>
+<label title="--wildcards"><input type="checkbox" value="" name="--wildcards" onchange="update()">use wildcards (default for exclusion) </label>
+<label title="--wildcards-match-slash"><input type="checkbox" value="" name="--wildcards-match-slash" onchange="update()">wildcards match '/' (default for exclusion) </label>
+<label title="--keep-directory-symlink"><input type="checkbox" value="" name="--keep-directory-symlink" onchange="update()">preserve existing symlinks to directories when extracting </label>
+<label title="--keep-newer-files"><input type="checkbox" value="" name="--keep-newer-files" onchange="update()">don't replace existing files that are newer than their archive copies </label>
+<label title="--keep-old-files"><input type="checkbox" value="" name="--keep-old-files" onchange="update()">don't replace existing files when extracting, treat them as errors </label>
+<label title="--no-overwrite-dir"><input type="checkbox" value="" name="--no-overwrite-dir" onchange="update()">preserve metadata of existing directories </label>
+<label title="--one-top-level[=DIR]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[DIR]" name="one-top-level" disabled="disabled">create a subdirectory to avoid having loose files extracted </label>
+<label title="--overwrite"><input type="checkbox" value="" name="--overwrite" onchange="update()">overwrite existing files when extracting </label>
+<label title="--overwrite-dir"><input type="checkbox" value="" name="--overwrite-dir" onchange="update()">overwrite metadata of existing directories when extracting (default) </label>
+<label title="--recursive-unlink"><input type="checkbox" value="" name="--recursive-unlink" onchange="update()">empty hierarchies prior to extracting directory </label>
+<label title="--remove-files"><input type="checkbox" value="" name="--remove-files" onchange="update()">remove files after adding them to the archive </label>
+<label title="--skip-old-files"><input type="checkbox" value="" name="--skip-old-files" onchange="update()">don't replace existing files when extracting, silently skip over them </label>
+<label title="--unlink-first"><input type="checkbox" value="" name="--unlink-first" onchange="update()">remove each file prior to extracting over it </label>
+<label title="--verify"><input type="checkbox" value="" name="--verify" onchange="update()">attempt to verify the archive after writing it </label>
+<label title="--ignore-command-error"><input type="checkbox" value="" name="--ignore-command-error" onchange="update()">ignore exit codes of children </label>
+<label title="--no-ignore-command-error"><input type="checkbox" value="" name="--no-ignore-command-error" onchange="update()">treat non-zero exit codes of children as error </label>
+<label title="--to-stdout"><input type="checkbox" value="" name="--to-stdout" onchange="update()">extract files to standard output </label>
+<label title="--to-command=COMMAND"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="COMMAND" name="to-command" disabled="disabled">pipe extracted files to another program </label>
+<label title="--atime-preserve[=METHOD]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[METHOD]" name="atime-preserve" disabled="disabled">preserve
+ access times on dumped files, either by restoring the times after 
+reading (METHOD='replace'; default) or by not setting the times in the 
+first place (METHOD='system') </label>
+<label title="--clamp-mtime"><input type="checkbox" value="" name="--clamp-mtime" onchange="update()">only set time when the file is more recent than what was given with --mtime </label>
+<label title="--delay-directory-restore"><input type="checkbox" value="" name="--delay-directory-restore" onchange="update()">delay setting modification times and permissions of extracted directories until the end of extraction </label>
+<label title="--group=NAME"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NAME" name="group" disabled="disabled">force NAME as group for added files </label>
+<label title="--group-map=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="group-map" disabled="disabled">use FILE to map file owner GIDs and names </label>
+<label title="--mode=CHANGES"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="CHANGES" name="mode" disabled="disabled">force (symbolic) mode CHANGES for added files </label>
+<label title="--mtime=DATE-OR-FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="DATE-OR-FILE" name="mtime" disabled="disabled">set mtime for added files from DATE-OR-FILE </label>
+<label title="--touch"><input type="checkbox" value="" name="--touch" onchange="update()">don't extract file modified time </label>
+<label title="--no-delay-directory-restore"><input type="checkbox" value="" name="--no-delay-directory-restore" onchange="update()">cancel the effect of --delay-directory-restore option </label>
+<label title="--no-same-owner"><input type="checkbox" value="" name="--no-same-owner" onchange="update()">extract files as yourself (default for ordinary users) </label>
+<label title="--no-same-permissions"><input type="checkbox" value="" name="--no-same-permissions" onchange="update()">apply the user's umask when extracting permissions from the archive (default for ordinary users) </label>
+<label title="--numeric-owner"><input type="checkbox" value="" name="--numeric-owner" onchange="update()">always use numbers for user/group names </label>
+<label title="--owner=NAME"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NAME" name="owner" disabled="disabled">force NAME as owner for added files </label>
+<label title="--owner-map=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="owner-map" disabled="disabled">use FILE to map file owner UIDs and names </label>
+<label title="--same-permissions"><input type="checkbox" value="" name="--same-permissions" onchange="update()">extract information about file permissions (default for superuser) </label>
+<label title="--same-owner"><input type="checkbox" value="" name="--same-owner" onchange="update()">try extracting files with the same ownership as exists in the archive (default for superuser) </label>
+<label title="--sort=ORDER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="ORDER" name="sort" disabled="disabled">directory sorting order: none (default), name or inode </label>
+<label title="--same-order"><input type="checkbox" value="" name="--same-order" onchange="update()">member arguments are listed in the same order as the files in the archive </label>
+<label title="--acls"><input type="checkbox" value="" name="--acls" onchange="update()">Enable the POSIX ACLs support </label>
+<label title="--no-acls"><input type="checkbox" value="" name="--no-acls" onchange="update()">Disable the POSIX ACLs support </label>
+<label title="--no-selinux"><input type="checkbox" value="" name="--no-selinux" onchange="update()">Disable the SELinux context support </label>
+<label title="--no-xattrs"><input type="checkbox" value="" name="--no-xattrs" onchange="update()">Disable extended attributes support </label>
+<label title="--selinux"><input type="checkbox" value="" name="--selinux" onchange="update()">Enable the SELinux context support </label>
+<label title="--xattrs"><input type="checkbox" value="" name="--xattrs" onchange="update()">Enable extended attributes support </label>
+<label title="--xattrs-exclude=MASK"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MASK" name="xattrs-exclude" disabled="disabled">specify the exclude pattern for xattr keys </label>
+<label title="--xattrs-include=MASK"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MASK" name="xattrs-include" disabled="disabled">specify the include pattern for xattr keys </label>
+<label title="--force-local"><input type="checkbox" value="" name="--force-local" onchange="update()">archive file is local even if it has a colon </label>
+<label title="--file=ARCHIVE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="ARCHIVE" name="file" disabled="disabled">use archive file or device ARCHIVE </label>
+<label title="--new-volume-script=NAME"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NAME" name="new-volume-script" disabled="disabled">run script at end of each tape (implies -M) </label>
+<label title="--tape-length=NUMBER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NUMBER" name="tape-length" disabled="disabled">change tape after writing NUMBER x 1024 bytes </label>
+<label title="--multi-volume"><input type="checkbox" value="" name="--multi-volume" onchange="update()">create/list/extract multi-volume archive </label>
+<label title="--rmt-command=COMMAND"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="COMMAND" name="rmt-command" disabled="disabled">use given rmt COMMAND instead of rmt </label>
+<label title="--rsh-command=COMMAND"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="COMMAND" name="rsh-command" disabled="disabled">use remote COMMAND instead of rsh </label>
+<label title="--volno-file=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="volno-file" disabled="disabled">use/update the volume number in FILE </label>
+<label title="--blocking-factor=BLOCKS"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="BLOCKS" name="blocking-factor" disabled="disabled">BLOCKS x 512 bytes per record </label>
+<label title="--read-full-records"><input type="checkbox" value="" name="--read-full-records" onchange="update()">reblock as we read (for 4.2BSD pipes) </label>
+<label title="--ignore-zeros"><input type="checkbox" value="" name="--ignore-zeros" onchange="update()">ignore zeroed blocks in archive (means EOF) </label>
+<label title="--record-size=NUMBER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NUMBER" name="record-size" disabled="disabled">NUMBER of bytes per record, multiple of 512 </label>
+<label title="--format=FORMAT"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FORMAT" name="format" disabled="disabled">create archive of the given format </label>
+<label title="--portability"><input type="checkbox" value="" name="--portability" onchange="update()">same as --format=v7 </label>
+<label title="--pax-option=keyword[[:]=value][,keyword[[:]=value]]..."><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="keyword[[:]=value][,keyword[[:]=value]]..." name="pax-option" disabled="disabled">control pax keywords </label>
+<label title="--posix"><input type="checkbox" value="" name="--posix" onchange="update()">same as --format=posix </label>
+<label title="--label=TEXT"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="TEXT" name="label" disabled="disabled">create archive with volume name TEXT; at list/extract time, use TEXT as a globbing pattern for volume name </label>
+<label title="--auto-compress"><input type="checkbox" value="" name="--auto-compress" onchange="update()">use archive suffix to determine the compression program </label>
+<label title="--use-compress-program=PROG"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="PROG" name="use-compress-program" disabled="disabled">filter through PROG (must accept -d) </label>
+<label title="--bzip2"><input type="checkbox" value="" name="--bzip2" onchange="update()">filter the archive through bzip2 </label>
+<label title="--xz"><input type="checkbox" value="" name="--xz" onchange="update()">filter the archive through xz </label>
+<label title="--lzip"><input type="checkbox" value="" name="--lzip" onchange="update()">filter the archive through lzip </label>
+<label title="--lzma"><input type="checkbox" value="" name="--lzma" onchange="update()">filter the archive through xz </label>
+<label title="--lzop"><input type="checkbox" value="" name="--lzop" onchange="update()">filter the archive through lzop </label>
+<label title="--no-auto-compress"><input type="checkbox" value="" name="--no-auto-compress" onchange="update()">do not use archive suffix to determine the compression program </label>
+<label title="--zstd"><input type="checkbox" value="" name="--zstd" onchange="update()">filter the archive through zstd </label>
+<label title="--ungzip"><input type="checkbox" value="" name="--ungzip" onchange="update()">filter the archive through gzip </label>
+<label title="--uncompress"><input type="checkbox" value="" name="--uncompress" onchange="update()">filter the archive through compress </label>
+<label title="--backup[=CONTROL]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[CONTROL]" name="backup" disabled="disabled">backup before removal, choose version CONTROL </label>
+<label title="--hard-dereference"><input type="checkbox" value="" name="--hard-dereference" onchange="update()">follow hard links; archive and dump the files they refer to </label>
+<label title="--dereference"><input type="checkbox" value="" name="--dereference" onchange="update()">follow symlinks; archive and dump the files they point to </label>
+<label title="--starting-file=MEMBER-NAME"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="MEMBER-NAME" name="starting-file" disabled="disabled">begin at member MEMBER-NAME when reading the archive </label>
+<label title="--newer-mtime=DATE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="DATE" name="newer-mtime" disabled="disabled">compare date and time when data changed only </label>
+<label title="--after-date=DATE-OR-FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="DATE-OR-FILE" name="after-date" disabled="disabled">only store files newer than DATE-OR-FILE </label>
+<label title="--one-file-system"><input type="checkbox" value="" name="--one-file-system" onchange="update()">stay in local file system when creating archive </label>
+<label title="--absolute-names"><input type="checkbox" value="" name="--absolute-names" onchange="update()">don't strip leading '/'s from file names </label>
+<label title="--suffix=STRING"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="STRING" name="suffix" disabled="disabled">backup before removal, override usual suffix ('~' unless overridden by environment variable SIMPLE_BACKUP_SUFFIX) </label>
+<label title="--strip-components=NUMBER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NUMBER" name="strip-components" disabled="disabled">strip NUMBER leading components from file names on extraction </label>
+<label title="--xform=EXPRESSION"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="EXPRESSION" name="xform" disabled="disabled">use sed replace EXPRESSION to transform file names </label>
+<label title="--checkpoint[=NUMBER]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[NUMBER]" name="checkpoint" disabled="disabled">display progress messages every NUMBERth record (default 10) </label>
+<label title="--checkpoint-action=ACTION"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="ACTION" name="checkpoint-action" disabled="disabled">execute ACTION on each checkpoint </label>
+<label title="--full-time"><input type="checkbox" value="" name="--full-time" onchange="update()">print file time to its full resolution </label>
+<label title="--index-file=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="index-file" disabled="disabled">send verbose output to FILE </label>
+<label title="--check-links"><input type="checkbox" value="" name="--check-links" onchange="update()">print a message if not all links are dumped </label>
+<label title="--no-quote-chars=STRING"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="STRING" name="no-quote-chars" disabled="disabled">disable quoting for characters from STRING </label>
+<label title="--quote-chars=STRING"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="STRING" name="quote-chars" disabled="disabled">additionally quote characters from STRING </label>
+<label title="--quoting-style=STYLE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="STYLE" name="quoting-style" disabled="disabled">set name quoting style; see below for valid STYLE values </label>
+<label title="--block-number"><input type="checkbox" value="" name="--block-number" onchange="update()">show block number within archive with each message </label>
+<label title="--show-defaults"><input type="checkbox" value="" name="--show-defaults" onchange="update()">show tar defaults </label>
+<label title="--show-omitted-dirs"><input type="checkbox" value="" name="--show-omitted-dirs" onchange="update()">when listing or extracting, list each directory that does not match search criteria </label>
+<label title="--show-snapshot-field-ranges"><input type="checkbox" value="" name="--show-snapshot-field-ranges" onchange="update()">show valid ranges for snapshot-file fields </label>
+<label title="--show-stored-names"><input type="checkbox" value="" name="--show-stored-names" onchange="update()">show file or archive names after transformation </label>
+<label title="--totals[=SIGNAL]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[SIGNAL]" name="totals" disabled="disabled">print
+ total bytes after processing the archive; with an argument - print 
+total bytes when this SIGNAL is delivered; Allowed signals are: SIGHUP, 
+SIGQUIT, SIGINT, SIGUSR1 and SIGUSR2; the names without SIG prefix are 
+also accepted </label>
+<label title="--utc"><input type="checkbox" value="" name="--utc" onchange="update()">print file modification times in UTC </label>
+<label title="--verbose"><input type="checkbox" value="" name="--verbose" onchange="update()">verbosely list files processed </label>
+<label title="--warning=KEYWORD"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="KEYWORD" name="warning" disabled="disabled">warning control </label>
+<label title="--confirmation"><input type="checkbox" value="" name="--confirmation" onchange="update()">ask for confirmation for every action </label>
+<label title="-o"><input type="checkbox" value="" name="-o" onchange="update()">when creating, same as --old-archive;=when extracting, same as --no-same-owner </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">give this help list </label>
+<label title="--restrict"><input type="checkbox" value="" name="--restrict" onchange="update()">disable use of some potentially harmful options </label>
+<label title="--usage"><input type="checkbox" value="" name="--usage" onchange="update()">give a short usage message </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">print program version </label>
+<label title="-f-"><input type="checkbox" value="" name="-f-" onchange="update()">-b20 --quoting-style=escape --rmt-command=/usr/sbin/rmt </label>
+<label title="--rsh-command=/usr/bin/rsh"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="/usr/bin/rsh" name="rsh-command" disabled="disabled">--rsh-command=/usr/bin/rsh</label>
+</form>
+<hr>
+<pre class="short"><code>Usage: tar [OPTION...] [FILE]...
+GNU 'tar' saves many files together into a single tape or disk archive, and can
+restore individual files from the archive.
+
+Examples:
+  tar -cf archive.tar foo bar  # Create archive.tar from files foo and bar.
+  tar -tvf archive.tar         # List all files in archive.tar verbosely.
+  tar -xf archive.tar          # Extract all files from archive.tar.
+
+ Main operation mode:
+  -A, --catenate, --concatenate   append tar files to an archive
+  -c, --create               create a new archive
+      --delete               delete from the archive (not on mag tapes!)
+  -d, --diff, --compare      find differences between archive and file system
+  -r, --append               append files to the end of an archive
+      --test-label           test the archive volume label and exit
+  -t, --list                 list the contents of an archive
+  -u, --update               only append files newer than copy in archive
+  -x, --extract, --get       extract files from an archive
+
+ Operation modifiers:
+
+      --check-device         check device numbers when creating incremental
+                             archives (default)
+  -g, --listed-incremental=FILE   handle new GNU-format incremental backup
+  -G, --incremental          handle old GNU-format incremental backup
+      --hole-detection=TYPE  technique to detect holes
+      --ignore-failed-read   do not exit with nonzero on unreadable files
+      --level=NUMBER         dump level for created listed-incremental archive
+      --no-check-device      do not check device numbers when creating
+                             incremental archives
+      --no-seek              archive is not seekable
+  -n, --seek                 archive is seekable
+      --occurrence[=NUMBER]  process only the NUMBERth occurrence of each file
+                             in the archive; this option is valid only in
+                             conjunction with one of the subcommands --delete,
+                             --diff, --extract or --list and when a list of
+                             files is given either on the command line or via
+                             the -T option; NUMBER defaults to 1
+      --sparse-version=MAJOR[.MINOR]
+                             set version of the sparse format to use (implies
+                             --sparse)
+  -S, --sparse               handle sparse files efficiently
+
+ Local file name selection:
+      --add-file=FILE        add given FILE to the archive (useful if its name
+                             starts with a dash)
+  -C, --directory=DIR        change to directory DIR
+      --exclude=PATTERN      exclude files, given as a PATTERN
+      --exclude-backups      exclude backup and lock files
+      --exclude-caches       exclude contents of directories containing
+                             CACHEDIR.TAG, except for the tag file itself
+      --exclude-caches-all   exclude directories containing CACHEDIR.TAG
+      --exclude-caches-under exclude everything under directories containing
+                             CACHEDIR.TAG
+      --exclude-ignore=FILE  read exclude patterns for each directory from
+                             FILE, if it exists
+      --exclude-ignore-recursive=FILE
+                             read exclude patterns for each directory and its
+                             subdirectories from FILE, if it exists
+      --exclude-tag=FILE     exclude contents of directories containing FILE,
+                             except for FILE itself
+      --exclude-tag-all=FILE exclude directories containing FILE
+      --exclude-tag-under=FILE   exclude everything under directories
+                             containing FILE
+      --exclude-vcs          exclude version control system directories
+      --exclude-vcs-ignores  read exclude patterns from the VCS ignore files
+      --no-null              disable the effect of the previous --null option
+      --no-recursion         avoid descending automatically in directories
+      --no-unquote           do not unquote input file or member names
+      --no-verbatim-files-from   -T treats file names starting with dash as
+                             options (default)
+      --null                 -T reads null-terminated names; implies
+                             --verbatim-files-from
+      --recursion            recurse into directories (default)
+  -T, --files-from=FILE      get names to extract or create from FILE
+      --unquote              unquote input file or member names (default)
+      --verbatim-files-from  -T reads file names verbatim (no escape or option
+                             handling)
+  -X, --exclude-from=FILE    exclude patterns listed in FILE
+
+ File name matching options (affect both exclude and include patterns):
+
+      --anchored             patterns match file name start
+      --ignore-case          ignore case
+      --no-anchored          patterns match after any '/' (default for
+                             exclusion)
+      --no-ignore-case       case sensitive matching (default)
+      --no-wildcards         verbatim string matching
+      --no-wildcards-match-slash   wildcards do not match '/'
+      --wildcards            use wildcards (default for exclusion)
+      --wildcards-match-slash   wildcards match '/' (default for exclusion)
+
+ Overwrite control:
+
+      --keep-directory-symlink   preserve existing symlinks to directories when
+                             extracting
+      --keep-newer-files     don't replace existing files that are newer than
+                             their archive copies
+  -k, --keep-old-files       don't replace existing files when extracting,
+                             treat them as errors
+      --no-overwrite-dir     preserve metadata of existing directories
+      --one-top-level[=DIR]  create a subdirectory to avoid having loose files
+                             extracted
+      --overwrite            overwrite existing files when extracting
+      --overwrite-dir        overwrite metadata of existing directories when
+                             extracting (default)
+      --recursive-unlink     empty hierarchies prior to extracting directory
+      --remove-files         remove files after adding them to the archive
+      --skip-old-files       don't replace existing files when extracting,
+                             silently skip over them
+  -U, --unlink-first         remove each file prior to extracting over it
+  -W, --verify               attempt to verify the archive after writing it
+
+ Select output stream:
+
+      --ignore-command-error ignore exit codes of children
+      --no-ignore-command-error   treat non-zero exit codes of children as
+                             error
+  -O, --to-stdout            extract files to standard output
+      --to-command=COMMAND   pipe extracted files to another program
+
+ Handling of file attributes:
+
+      --atime-preserve[=METHOD]   preserve access times on dumped files, either
+                             by restoring the times after reading
+                             (METHOD='replace'; default) or by not setting the
+                             times in the first place (METHOD='system')
+      --clamp-mtime          only set time when the file is more recent than
+                             what was given with --mtime
+      --delay-directory-restore   delay setting modification times and
+                             permissions of extracted directories until the end
+                             of extraction
+      --group=NAME           force NAME as group for added files
+      --group-map=FILE       use FILE to map file owner GIDs and names
+      --mode=CHANGES         force (symbolic) mode CHANGES for added files
+      --mtime=DATE-OR-FILE   set mtime for added files from DATE-OR-FILE
+  -m, --touch                don't extract file modified time
+      --no-delay-directory-restore
+                             cancel the effect of --delay-directory-restore
+                             option
+      --no-same-owner        extract files as yourself (default for ordinary
+                             users)
+      --no-same-permissions  apply the user's umask when extracting permissions
+                             from the archive (default for ordinary users)
+      --numeric-owner        always use numbers for user/group names
+      --owner=NAME           force NAME as owner for added files
+      --owner-map=FILE       use FILE to map file owner UIDs and names
+  -p, --preserve-permissions, --same-permissions
+                             extract information about file permissions
+                             (default for superuser)
+      --same-owner           try extracting files with the same ownership as
+                             exists in the archive (default for superuser)
+      --sort=ORDER           directory sorting order: none (default), name or
+                             inode
+  -s, --preserve-order, --same-order
+                             member arguments are listed in the same order as
+                             the files in the archive
+
+ Handling of extended file attributes:
+
+      --acls                 Enable the POSIX ACLs support
+      --no-acls              Disable the POSIX ACLs support
+      --no-selinux           Disable the SELinux context support
+      --no-xattrs            Disable extended attributes support
+      --selinux              Enable the SELinux context support
+      --xattrs               Enable extended attributes support
+      --xattrs-exclude=MASK  specify the exclude pattern for xattr keys
+      --xattrs-include=MASK  specify the include pattern for xattr keys
+
+ Device selection and switching:
+
+      --force-local          archive file is local even if it has a colon
+  -f, --file=ARCHIVE         use archive file or device ARCHIVE
+  -F, --info-script=NAME, --new-volume-script=NAME
+                             run script at end of each tape (implies -M)
+  -L, --tape-length=NUMBER   change tape after writing NUMBER x 1024 bytes
+  -M, --multi-volume         create/list/extract multi-volume archive
+      --rmt-command=COMMAND  use given rmt COMMAND instead of rmt
+      --rsh-command=COMMAND  use remote COMMAND instead of rsh
+      --volno-file=FILE      use/update the volume number in FILE
+
+ Device blocking:
+
+  -b, --blocking-factor=BLOCKS   BLOCKS x 512 bytes per record
+  -B, --read-full-records    reblock as we read (for 4.2BSD pipes)
+  -i, --ignore-zeros         ignore zeroed blocks in archive (means EOF)
+      --record-size=NUMBER   NUMBER of bytes per record, multiple of 512
+
+ Archive format selection:
+
+  -H, --format=FORMAT        create archive of the given format
+
+ FORMAT is one of the following:
+    gnu                      GNU tar 1.13.x format
+    oldgnu                   GNU format as per tar &lt;= 1.12
+    pax                      POSIX 1003.1-2001 (pax) format
+    posix                    same as pax
+    ustar                    POSIX 1003.1-1988 (ustar) format
+    v7                       old V7 tar format
+
+      --old-archive, --portability
+                             same as --format=v7
+      --pax-option=keyword[[:]=value][,keyword[[:]=value]]...
+                             control pax keywords
+      --posix                same as --format=posix
+  -V, --label=TEXT           create archive with volume name TEXT; at
+                             list/extract time, use TEXT as a globbing pattern
+                             for volume name
+
+ Compression options:
+
+  -a, --auto-compress        use archive suffix to determine the compression
+                             program
+  -I, --use-compress-program=PROG
+                             filter through PROG (must accept -d)
+  -j, --bzip2                filter the archive through bzip2
+  -J, --xz                   filter the archive through xz
+      --lzip                 filter the archive through lzip
+      --lzma                 filter the archive through xz
+      --lzop                 filter the archive through lzop
+      --no-auto-compress     do not use archive suffix to determine the
+                             compression program
+      --zstd                 filter the archive through zstd
+  -z, --gzip, --gunzip, --ungzip   filter the archive through gzip
+  -Z, --compress, --uncompress   filter the archive through compress
+
+ Local file selection:
+
+      --backup[=CONTROL]     backup before removal, choose version CONTROL
+      --hard-dereference     follow hard links; archive and dump the files they
+                             refer to
+  -h, --dereference          follow symlinks; archive and dump the files they
+                             point to
+  -K, --starting-file=MEMBER-NAME
+                             begin at member MEMBER-NAME when reading the
+                             archive
+      --newer-mtime=DATE     compare date and time when data changed only
+  -N, --newer=DATE-OR-FILE, --after-date=DATE-OR-FILE
+                             only store files newer than DATE-OR-FILE
+      --one-file-system      stay in local file system when creating archive
+  -P, --absolute-names       don't strip leading '/'s from file names
+      --suffix=STRING        backup before removal, override usual suffix ('~'
+                             unless overridden by environment variable
+                             SIMPLE_BACKUP_SUFFIX)
+
+ File name transformations:
+
+      --strip-components=NUMBER   strip NUMBER leading components from file
+                             names on extraction
+      --transform=EXPRESSION, --xform=EXPRESSION
+                             use sed replace EXPRESSION to transform file
+                             names
+
+ Informative output:
+
+      --checkpoint[=NUMBER]  display progress messages every NUMBERth record
+                             (default 10)
+      --checkpoint-action=ACTION   execute ACTION on each checkpoint
+      --full-time            print file time to its full resolution
+      --index-file=FILE      send verbose output to FILE
+  -l, --check-links          print a message if not all links are dumped
+      --no-quote-chars=STRING   disable quoting for characters from STRING
+      --quote-chars=STRING   additionally quote characters from STRING
+      --quoting-style=STYLE  set name quoting style; see below for valid STYLE
+                             values
+  -R, --block-number         show block number within archive with each message
+                            
+      --show-defaults        show tar defaults
+      --show-omitted-dirs    when listing or extracting, list each directory
+                             that does not match search criteria
+      --show-snapshot-field-ranges
+                             show valid ranges for snapshot-file fields
+      --show-transformed-names, --show-stored-names
+                             show file or archive names after transformation
+      --totals[=SIGNAL]      print total bytes after processing the archive;
+                             with an argument - print total bytes when this
+                             SIGNAL is delivered; Allowed signals are: SIGHUP,
+                             SIGQUIT, SIGINT, SIGUSR1 and SIGUSR2; the names
+                             without SIG prefix are also accepted
+      --utc                  print file modification times in UTC
+  -v, --verbose              verbosely list files processed
+      --warning=KEYWORD      warning control
+  -w, --interactive, --confirmation
+                             ask for confirmation for every action
+
+ Compatibility options:
+
+  -o                         when creating, same as --old-archive; when
+                             extracting, same as --no-same-owner
+
+ Other options:
+
+  -?, --help                 give this help list
+      --restrict             disable use of some potentially harmful options
+      --usage                give a short usage message
+      --version              print program version
+
+Mandatory or optional arguments to long options are also mandatory or optional
+for any corresponding short options.
+
+The backup suffix is '~', unless set with --suffix or SIMPLE_BACKUP_SUFFIX.
+The version control may be set with --backup or VERSION_CONTROL, values are:
+
+  none, off       never make backups
+  t, numbered     make numbered backups
+  nil, existing   numbered if numbered backups exist, simple otherwise
+  never, simple   always make simple backups
+
+Valid arguments for the --quoting-style option are:
+
+  literal
+  shell
+  shell-always
+  shell-escape
+  shell-escape-always
+  c
+  c-maybe
+  escape
+  locale
+  clocale
+
+*This* tar defaults to:
+--format=gnu -f- -b20 --quoting-style=escape --rmt-command=/usr/sbin/rmt
+--rsh-command=/usr/bin/rsh</code></pre>
+
+
+</body></html>

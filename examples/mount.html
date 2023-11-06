@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>mount GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "mount";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>mount</p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/mount" method="GET" class="vbox">
+<label title="--all"><input type="checkbox" value="" name="--all" onchange="update()">mount all filesystems mentioned in fstab </label>
+<label title="--no-canonicalize"><input type="checkbox" value="" name="--no-canonicalize" onchange="update()">don't canonicalize paths </label>
+<label title="--fake"><input type="checkbox" value="" name="--fake" onchange="update()">dry run; skip the mount(2) syscall </label>
+<label title="--fork"><input type="checkbox" value="" name="--fork" onchange="update()">fork off for each device (use with -a) </label>
+<label title="--fstab=path"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="path" name="fstab" disabled="disabled">alternative file to /etc/fstab </label>
+<label title="--internal-only"><input type="checkbox" value="" name="--internal-only" onchange="update()">don't call the mount.&lt;type&gt; helpers </label>
+<label title="--show-labels"><input type="checkbox" value="" name="--show-labels" onchange="update()">show also filesystem labels </label>
+<label title="--mkdir[=mode]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[mode]" name="mkdir" disabled="disabled">alias to '-o X-mount.mkdir[=mode]' </label>
+<label title="--no-mtab"><input type="checkbox" value="" name="--no-mtab" onchange="update()">don't write to /etc/mtab </label>
+<label title="--options-mode=mode"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="mode" name="options-mode" disabled="disabled">what to do with options loaded from fstab </label>
+<label title="--options-source=source"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="source" name="options-source" disabled="disabled">mount options source </label>
+<label title="--options-source-force"><input type="checkbox" value="" name="--options-source-force" onchange="update()">force use of options from fstab/mtab </label>
+<label title="--options=list"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="list" name="options" disabled="disabled">comma-separated list of mount options </label>
+<label title="--test-opts=list"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="list" name="test-opts" disabled="disabled">limit the set of filesystems (use with -a) </label>
+<label title="--read-only"><input type="checkbox" value="" name="--read-only" onchange="update()">mount the filesystem read-only (same as -o ro) </label>
+<label title="--types=list"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="list" name="types" disabled="disabled">limit the set of filesystem types </label>
+<label title="--source=src"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="src" name="source" disabled="disabled">explicitly specifies source (path, label, uuid) </label>
+<label title="--target=target"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="target" name="target" disabled="disabled">explicitly specifies mountpoint </label>
+<label title="--target-prefix=path"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="path" name="target-prefix" disabled="disabled">specifies path used for all mountpoints </label>
+<label title="--verbose"><input type="checkbox" value="" name="--verbose" onchange="update()">say what is being done </label>
+<label title="--read-write"><input type="checkbox" value="" name="--read-write" onchange="update()">mount the filesystem read-write (default) </label>
+<label title="--namespace=ns"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="ns" name="namespace" disabled="disabled">perform mount in another namespace </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">display this help </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">display version </label>
+<label title="--label=label"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="label" name="label" disabled="disabled">synonym for LABEL=&lt;label&gt; </label>
+<label title="--uuid=uuid"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="uuid" name="uuid" disabled="disabled">synonym
+ for UUID=&lt;uuid&gt; LABEL=&lt;label&gt; specifies device by 
+filesystem label UUID=&lt;uuid&gt; specifies device by filesystem UUID 
+PARTLABEL=&lt;label&gt; specifies device by partition label 
+PARTUUID=&lt;uuid&gt; specifies device by partition UUID ID=&lt;id&gt; 
+specifies device by udev hardware ID &lt;device&gt; specifies device by 
+path &lt;directory&gt; mountpoint for bind mounts (see 
+--bind/rbind)=file regular file for loopdev setup </label>
+<label title="--bind"><input type="checkbox" value="" name="--bind" onchange="update()">mount a subtree somewhere else (same as -o bind) </label>
+<label title="--move"><input type="checkbox" value="" name="--move" onchange="update()">move a subtree to some other place </label>
+<label title="--rbind"><input type="checkbox" value="" name="--rbind" onchange="update()">mount a subtree and all submounts somewhere else </label>
+<label title="--make-shared"><input type="checkbox" value="" name="--make-shared" onchange="update()">mark a subtree as shared </label>
+<label title="--make-slave"><input type="checkbox" value="" name="--make-slave" onchange="update()">mark a subtree as slave </label>
+<label title="--make-private"><input type="checkbox" value="" name="--make-private" onchange="update()">mark a subtree as private </label>
+<label title="--make-unbindable"><input type="checkbox" value="" name="--make-unbindable" onchange="update()">mark a subtree as unbindable </label>
+<label title="--make-rshared"><input type="checkbox" value="" name="--make-rshared" onchange="update()">recursively mark a whole subtree as shared </label>
+<label title="--make-rslave"><input type="checkbox" value="" name="--make-rslave" onchange="update()">recursively mark a whole subtree as slave </label>
+<label title="--make-rprivate"><input type="checkbox" value="" name="--make-rprivate" onchange="update()">recursively mark a whole subtree as private </label>
+<label title="--make-runbindable"><input type="checkbox" value="" name="--make-runbindable" onchange="update()">recursively mark a whole subtree as unbindable </label>
+</form>
+<hr>
+<pre class="short"><code>
+Usage:
+ mount [-lhV]
+ mount -a [options]
+ mount [options] [--source] &lt;source&gt; | [--target] &lt;directory&gt;
+ mount [options] &lt;source&gt; &lt;directory&gt;
+ mount &lt;operation&gt; &lt;mountpoint&gt; [&lt;target&gt;]
+
+Mount a filesystem.
+
+Options:
+ -a, --all               mount all filesystems mentioned in fstab
+ -c, --no-canonicalize   don't canonicalize paths
+ -f, --fake              dry run; skip the mount(2) syscall
+ -F, --fork              fork off for each device (use with -a)
+ -T, --fstab &lt;path&gt;      alternative file to /etc/fstab
+ -i, --internal-only     don't call the mount.&lt;type&gt; helpers
+ -l, --show-labels       show also filesystem labels
+ -m, --mkdir[=&lt;mode&gt;]    alias to '-o X-mount.mkdir[=&lt;mode&gt;]'
+ -n, --no-mtab           don't write to /etc/mtab
+     --options-mode &lt;mode&gt;
+                         what to do with options loaded from fstab
+     --options-source &lt;source&gt;
+                         mount options source
+     --options-source-force
+                         force use of options from fstab/mtab
+ -o, --options &lt;list&gt;    comma-separated list of mount options
+ -O, --test-opts &lt;list&gt;  limit the set of filesystems (use with -a)
+ -r, --read-only         mount the filesystem read-only (same as -o ro)
+ -t, --types &lt;list&gt;      limit the set of filesystem types
+     --source &lt;src&gt;      explicitly specifies source (path, label, uuid)
+     --target &lt;target&gt;   explicitly specifies mountpoint
+     --target-prefix &lt;path&gt;
+                         specifies path used for all mountpoints
+ -v, --verbose           say what is being done
+ -w, --rw, --read-write  mount the filesystem read-write (default)
+ -N, --namespace &lt;ns&gt;    perform mount in another namespace
+
+ -h, --help              display this help
+ -V, --version           display version
+
+Source:
+ -L, --label &lt;label&gt;     synonym for LABEL=&lt;label&gt;
+ -U, --uuid &lt;uuid&gt;       synonym for UUID=&lt;uuid&gt;
+ LABEL=&lt;label&gt;           specifies device by filesystem label
+ UUID=&lt;uuid&gt;             specifies device by filesystem UUID
+ PARTLABEL=&lt;label&gt;       specifies device by partition label
+ PARTUUID=&lt;uuid&gt;         specifies device by partition UUID
+ ID=&lt;id&gt;                 specifies device by udev hardware ID
+ &lt;device&gt;                specifies device by path
+ &lt;directory&gt;             mountpoint for bind mounts (see --bind/rbind)
+ &lt;file&gt;                  regular file for loopdev setup
+
+Operations:
+ -B, --bind              mount a subtree somewhere else (same as -o bind)
+ -M, --move              move a subtree to some other place
+ -R, --rbind             mount a subtree and all submounts somewhere else
+ --make-shared           mark a subtree as shared
+ --make-slave            mark a subtree as slave
+ --make-private          mark a subtree as private
+ --make-unbindable       mark a subtree as unbindable
+ --make-rshared          recursively mark a whole subtree as shared
+ --make-rslave           recursively mark a whole subtree as slave
+ --make-rprivate         recursively mark a whole subtree as private
+ --make-runbindable      recursively mark a whole subtree as unbindable
+
+For more details see mount(8).</code></pre>
+
+
+</body></html>

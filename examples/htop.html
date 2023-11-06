@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>htop GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "htop";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>htop</p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/htop" method="GET" class="vbox">
+<label title="--no-color"><input type="checkbox" value="" name="--no-color" onchange="update()">Use a monochrome color scheme </label>
+<label title="--delay=DELAY"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="DELAY" name="delay" disabled="disabled">Set the delay between updates, in tenths of seconds </label>
+<label title="--filter=FILTER"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILTER" name="filter" disabled="disabled">Show only the commands matching the given filter </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">Print this help screen </label>
+<label title="--highlight-changes[=DELAY]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[DELAY]" name="highlight-changes" disabled="disabled">Highlight new and old processes </label>
+<label title="--no-mouse"><input type="checkbox" value="" name="--no-mouse" onchange="update()">Disable the mouse </label>
+<label title="--pid=PID[,PID,PID...]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="PID[,PID,PID...]" name="pid">Show only the given PIDs </label>
+<label title="--readonly"><input type="checkbox" value="" name="--readonly" onchange="update()">Disable all system and process changing features </label>
+<label title="--sort-key=COLUMN"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="COLUMN" name="sort-key" disabled="disabled">Sort by COLUMN in list view (try --sort-key=help for a list) </label>
+<label title="--tree"><input type="checkbox" value="" name="--tree" onchange="update()">Show the tree view (can be combined with -s) </label>
+<label title="--user[=USERNAME]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[USERNAME]" name="user" disabled="disabled">Show only processes for a given user (or $USER) </label>
+<label title="--no-unicode"><input type="checkbox" value="" name="--no-unicode" onchange="update()">Do not use unicode but plain ASCII </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">Print version info </label>
+</form>
+<hr>
+<pre class="short"><code>htop 3.2.2
+(C) 2004-2019 Hisham Muhammad. (C) 2020-2023 htop dev team.
+Released under the GNU GPLv2+.
+
+-C --no-color                   Use a monochrome color scheme
+-d --delay=DELAY                Set the delay between updates, in tenths of seconds
+-F --filter=FILTER              Show only the commands matching the given filter
+-h --help                       Print this help screen
+-H --highlight-changes[=DELAY]  Highlight new and old processes
+-M --no-mouse                   Disable the mouse
+-p --pid=PID[,PID,PID...]       Show only the given PIDs
+   --readonly                   Disable all system and process changing features
+-s --sort-key=COLUMN            Sort by COLUMN in list view (try --sort-key=help for a list)
+-t --tree                       Show the tree view (can be combined with -s)
+-u --user[=USERNAME]            Show only processes for a given user (or $USER)
+-U --no-unicode                 Do not use unicode but plain ASCII
+-V --version                    Print version info
+
+Press F1 inside htop for online help.
+See 'man htop' for more information.</code></pre>
+
+
+</body></html>

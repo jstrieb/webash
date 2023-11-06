@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>dir GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "dir";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>dir</p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/dir" method="GET" class="vbox">
+<label title="--all"><input type="checkbox" value="" name="--all" onchange="update()">do not ignore entries starting with . </label>
+<label title="--almost-all"><input type="checkbox" value="" name="--almost-all" onchange="update()">do not list implied . and .. </label>
+<label title="--author"><input type="checkbox" value="" name="--author" onchange="update()">with -l, print the author of each file </label>
+<label title="--escape"><input type="checkbox" value="" name="--escape" onchange="update()">print C-style escapes for nongraphic characters </label>
+<label title="--block-size=SIZE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="SIZE" name="block-size" disabled="disabled">with -l, scale sizes by SIZE when printing them; e.g., '--block-size=M'; see SIZE format below </label>
+<label title="--ignore-backups"><input type="checkbox" value="" name="--ignore-backups" onchange="update()">do not list implied entries ending with ~ </label>
+<label title="-c"><input type="checkbox" value="" name="-c" onchange="update()">with
+ -lt: sort by, and show, ctime (time of last modification of file status
+ information); with -l: show ctime and sort by name; otherwise: sort by 
+ctime, newest first </label>
+<label title="-C"><input type="checkbox" value="" name="-C" onchange="update()">list entries by columns </label>
+<label title="--color[=WHEN]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[WHEN]" name="color" disabled="disabled">color the output WHEN; more info below </label>
+<label title="--directory"><input type="checkbox" value="" name="--directory" onchange="update()">list directories themselves, not their contents </label>
+<label title="--dired"><input type="checkbox" value="" name="--dired" onchange="update()">generate output designed for Emacs' dired mode </label>
+<label title="-f"><input type="checkbox" value="" name="-f" onchange="update()">list all entries in directory order </label>
+<label title="--classify[=WHEN]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[WHEN]" name="classify" disabled="disabled">append indicator (one of */=&gt;@|) to entries WHEN </label>
+<label title="--file-type"><input type="checkbox" value="" name="--file-type" onchange="update()">likewise, except do not append '*' </label>
+<label title="--format=WORD"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="WORD" name="format" disabled="disabled">across -x, commas -m, horizontal -x, long -l, single-column -1, verbose -l, vertical -C </label>
+<label title="--full-time"><input type="checkbox" value="" name="--full-time" onchange="update()">like -l --time-style=full-iso </label>
+<label title="-g"><input type="checkbox" value="" name="-g" onchange="update()">like -l, but do not list owner </label>
+<label title="--group-directories-first"><input type="checkbox" value="" name="--group-directories-first" onchange="update()">group directories before files; can be augmented with a --sort option, but any use of --sort=none (-U) disables grouping </label>
+<label title="--no-group"><input type="checkbox" value="" name="--no-group" onchange="update()">in a long listing, don't print group names </label>
+<label title="--human-readable"><input type="checkbox" value="" name="--human-readable" onchange="update()">with -l and -s, print sizes like 1K 234M 2G etc. </label>
+<label title="--si"><input type="checkbox" value="" name="--si" onchange="update()">likewise, but use powers of 1000 not 1024 </label>
+<label title="--dereference-command-line"><input type="checkbox" value="" name="--dereference-command-line" onchange="update()">follow symbolic links listed on the command line </label>
+<label title="--dereference-command-line-symlink-to-dir"><input type="checkbox" value="" name="--dereference-command-line-symlink-to-dir" onchange="update()">follow each command line symbolic link that points to a directory </label>
+<label title="--hide=PATTERN"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="PATTERN" name="hide" disabled="disabled">do not list implied entries matching shell PATTERN (overridden by -a or -A) </label>
+<label title="--hyperlink[=WHEN]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[WHEN]" name="hyperlink" disabled="disabled">hyperlink file names WHEN </label>
+<label title="--indicator-style=WORD"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="WORD" name="indicator-style" disabled="disabled">append indicator with style WORD to entry names: none (default), slash (-p), file-type (--file-type), classify (-F) </label>
+<label title="--inode"><input type="checkbox" value="" name="--inode" onchange="update()">print the index number of each file </label>
+<label title="--ignore=PATTERN"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="PATTERN" name="ignore" disabled="disabled">do not list implied entries matching shell PATTERN </label>
+<label title="--kibibytes"><input type="checkbox" value="" name="--kibibytes" onchange="update()">default to 1024-byte blocks for file system usage; used only with -s and per directory totals </label>
+<label title="-l"><input type="checkbox" value="" name="-l" onchange="update()">use a long listing format </label>
+<label title="--dereference"><input type="checkbox" value="" name="--dereference" onchange="update()">when
+ showing file information for a symbolic link, show information for the 
+file the link references rather than for the link itself </label>
+<label title="-m"><input type="checkbox" value="" name="-m" onchange="update()">fill width with a comma separated list of entries </label>
+<label title="--numeric-uid-gid"><input type="checkbox" value="" name="--numeric-uid-gid" onchange="update()">like -l, but list numeric user and group IDs </label>
+<label title="--literal"><input type="checkbox" value="" name="--literal" onchange="update()">print entry names without quoting </label>
+<label title="-o"><input type="checkbox" value="" name="-o" onchange="update()">like -l, but do not list group information </label>
+<label title="--indicator-style=slash"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="slash" name="indicator-style" disabled="disabled">append / indicator to directories </label>
+<label title="--hide-control-chars"><input type="checkbox" value="" name="--hide-control-chars" onchange="update()">print ? instead of nongraphic characters </label>
+<label title="--show-control-chars"><input type="checkbox" value="" name="--show-control-chars" onchange="update()">show nongraphic characters as-is (the default, unless program is 'ls' and output is a terminal) </label>
+<label title="--quote-name"><input type="checkbox" value="" name="--quote-name" onchange="update()">enclose entry names in double quotes </label>
+<label title="--quoting-style=WORD"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="WORD" name="quoting-style" disabled="disabled">use
+ quoting style WORD for entry names: literal, locale, shell, 
+shell-always, shell-escape, shell-escape-always, c, escape (overrides 
+QUOTING_STYLE environment variable) </label>
+<label title="--reverse"><input type="checkbox" value="" name="--reverse" onchange="update()">reverse order while sorting </label>
+<label title="--recursive"><input type="checkbox" value="" name="--recursive" onchange="update()">list subdirectories recursively </label>
+<label title="--size"><input type="checkbox" value="" name="--size" onchange="update()">print the allocated size of each file, in blocks </label>
+<label title="-S"><input type="checkbox" value="" name="-S" onchange="update()">sort by file size, largest first </label>
+<label title="--sort=WORD"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="WORD" name="sort" disabled="disabled">sort by WORD instead of name: none (-U), size (-S), time (-t), version (-v), extension (-X), width </label>
+<label title="--time=WORD"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="WORD" name="time" disabled="disabled">change
+ the default of using modification times; access time (-u): atime, 
+access, use; change time (-c): ctime, status; birth time: birth, 
+creation; with -l, WORD determines which time to show; with --sort=time,
+ sort by WORD (newest first) </label>
+<label title="--time-style=TIME_STYLE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="TIME_STYLE" name="time-style" disabled="disabled">time/date format with -l; see TIME_STYLE below </label>
+<label title="-t"><input type="checkbox" value="" name="-t" onchange="update()">sort by time, newest first; see --time </label>
+<label title="--tabsize=COLS"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="COLS" name="tabsize" disabled="disabled">assume tab stops at each COLS instead of 8 </label>
+<label title="-u"><input type="checkbox" value="" name="-u" onchange="update()">with
+ -lt: sort by, and show, access time; with -l: show access time and sort
+ by name; otherwise: sort by access time, newest first </label>
+<label title="-U"><input type="checkbox" value="" name="-U" onchange="update()">do not sort; list entries in directory order </label>
+<label title="-v"><input type="checkbox" value="" name="-v" onchange="update()">natural sort of (version) numbers within text </label>
+<label title="--width=COLS"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="COLS" name="width" disabled="disabled">set output width to COLS. 0 means no limit </label>
+<label title="-x"><input type="checkbox" value="" name="-x" onchange="update()">list entries by lines instead of by columns </label>
+<label title="-X"><input type="checkbox" value="" name="-X" onchange="update()">sort alphabetically by entry extension </label>
+<label title="--context"><input type="checkbox" value="" name="--context" onchange="update()">print any security context of each file </label>
+<label title="--zero"><input type="checkbox" value="" name="--zero" onchange="update()">end each output line with NUL, not newline </label>
+<label title="-1"><input type="checkbox" value="" name="-1" onchange="update()">list one file per line </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">display this help and exit </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">output version information and exit </label>
+</form>
+<hr>
+<pre class="short"><code>Usage: dir [OPTION]... [FILE]...
+List information about the FILEs (the current directory by default).
+Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.
+
+Mandatory arguments to long options are mandatory for short options too.
+  -a, --all                  do not ignore entries starting with .
+  -A, --almost-all           do not list implied . and ..
+      --author               with -l, print the author of each file
+  -b, --escape               print C-style escapes for nongraphic characters
+      --block-size=SIZE      with -l, scale sizes by SIZE when printing them;
+                             e.g., '--block-size=M'; see SIZE format below
+
+  -B, --ignore-backups       do not list implied entries ending with ~
+  -c                         with -lt: sort by, and show, ctime (time of last
+                             modification of file status information);
+                             with -l: show ctime and sort by name;
+                             otherwise: sort by ctime, newest first
+
+  -C                         list entries by columns
+      --color[=WHEN]         color the output WHEN; more info below
+  -d, --directory            list directories themselves, not their contents
+  -D, --dired                generate output designed for Emacs' dired mode
+  -f                         list all entries in directory order
+  -F, --classify[=WHEN]      append indicator (one of */=&gt;@|) to entries WHEN
+      --file-type            likewise, except do not append '*'
+      --format=WORD          across -x, commas -m, horizontal -x, long -l,
+                             single-column -1, verbose -l, vertical -C
+
+      --full-time            like -l --time-style=full-iso
+  -g                         like -l, but do not list owner
+      --group-directories-first
+                             group directories before files;
+                             can be augmented with a --sort option, but any
+                             use of --sort=none (-U) disables grouping
+
+  -G, --no-group             in a long listing, don't print group names
+  -h, --human-readable       with -l and -s, print sizes like 1K 234M 2G etc.
+      --si                   likewise, but use powers of 1000 not 1024
+  -H, --dereference-command-line
+                             follow symbolic links listed on the command line
+      --dereference-command-line-symlink-to-dir
+                             follow each command line symbolic link
+                             that points to a directory
+
+      --hide=PATTERN         do not list implied entries matching shell PATTERN
+                             (overridden by -a or -A)
+
+      --hyperlink[=WHEN]     hyperlink file names WHEN
+      --indicator-style=WORD
+                             append indicator with style WORD to entry names:
+                             none (default), slash (-p),
+                             file-type (--file-type), classify (-F)
+
+  -i, --inode                print the index number of each file
+  -I, --ignore=PATTERN       do not list implied entries matching shell PATTERN
+  -k, --kibibytes            default to 1024-byte blocks for file system usage;
+                             used only with -s and per directory totals
+
+  -l                         use a long listing format
+  -L, --dereference          when showing file information for a symbolic
+                             link, show information for the file the link
+                             references rather than for the link itself
+
+  -m                         fill width with a comma separated list of entries
+  -n, --numeric-uid-gid      like -l, but list numeric user and group IDs
+  -N, --literal              print entry names without quoting
+  -o                         like -l, but do not list group information
+  -p, --indicator-style=slash
+                             append / indicator to directories
+  -q, --hide-control-chars   print ? instead of nongraphic characters
+      --show-control-chars   show nongraphic characters as-is (the default,
+                             unless program is 'ls' and output is a terminal)
+
+  -Q, --quote-name           enclose entry names in double quotes
+      --quoting-style=WORD   use quoting style WORD for entry names:
+                             literal, locale, shell, shell-always,
+                             shell-escape, shell-escape-always, c, escape
+                             (overrides QUOTING_STYLE environment variable)
+
+  -r, --reverse              reverse order while sorting
+  -R, --recursive            list subdirectories recursively
+  -s, --size                 print the allocated size of each file, in blocks
+  -S                         sort by file size, largest first
+      --sort=WORD            sort by WORD instead of name: none (-U), size (-S),
+                             time (-t), version (-v), extension (-X), width
+
+      --time=WORD            change the default of using modification times;
+                               access time (-u): atime, access, use;
+                               change time (-c): ctime, status;
+                               birth time: birth, creation;
+                             with -l, WORD determines which time to show;
+                             with --sort=time, sort by WORD (newest first)
+
+      --time-style=TIME_STYLE
+                             time/date format with -l; see TIME_STYLE below
+  -t                         sort by time, newest first; see --time
+  -T, --tabsize=COLS         assume tab stops at each COLS instead of 8
+  -u                         with -lt: sort by, and show, access time;
+                             with -l: show access time and sort by name;
+                             otherwise: sort by access time, newest first
+
+  -U                         do not sort; list entries in directory order
+  -v                         natural sort of (version) numbers within text
+  -w, --width=COLS           set output width to COLS.  0 means no limit
+  -x                         list entries by lines instead of by columns
+  -X                         sort alphabetically by entry extension
+  -Z, --context              print any security context of each file
+      --zero                 end each output line with NUL, not newline
+  -1                         list one file per line
+      --help        display this help and exit
+      --version     output version information and exit
+
+The SIZE argument is an integer and optional unit (example: 10K is 10*1024).
+Units are K,M,G,T,P,E,Z,Y (powers of 1024) or KB,MB,... (powers of 1000).
+Binary prefixes can be used, too: KiB=K, MiB=M, and so on.
+
+The TIME_STYLE argument can be full-iso, long-iso, iso, locale, or +FORMAT.
+FORMAT is interpreted like in date(1).  If FORMAT is FORMAT1&lt;newline&gt;FORMAT2,
+then FORMAT1 applies to non-recent files and FORMAT2 to recent files.
+TIME_STYLE prefixed with 'posix-' takes effect only outside the POSIX locale.
+Also the TIME_STYLE environment variable sets the default style to use.
+
+The WHEN argument defaults to 'always' and can also be 'auto' or 'never'.
+
+Using color to distinguish file types is disabled both by default and
+with --color=never.  With --color=auto, ls emits color codes only when
+standard output is connected to a terminal.  The LS_COLORS environment
+variable can change the settings.  Use the dircolors(1) command to set it.
+
+Exit status:
+ 0  if OK,
+ 1  if minor problems (e.g., cannot access subdirectory),
+ 2  if serious trouble (e.g., cannot access command-line argument).
+
+GNU coreutils online help: &lt;https://www.gnu.org/software/coreutils/&gt;
+Report any translation bugs to &lt;https://translationproject.org/team/&gt;
+Full documentation &lt;https://www.gnu.org/software/coreutils/dir&gt;
+or available locally via: info '(coreutils) dir invocation'</code></pre>
+
+
+</body></html>

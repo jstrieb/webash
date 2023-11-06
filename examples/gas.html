@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>x86_64-linux-gnu-as GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "x86_64-linux-gnu-as";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>x86_64-linux-gnu-as  </p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/x86_64-linux-gnu-as" method="GET" class="vbox">
+<label title="-a[sub-option...]"><input type="checkbox" value="" name="-a[sub-option...]" onchange="update()">turn
+ on listings Sub-options [default hls]: c omit false conditionals d omit
+ debugging directives g include general info h include high-level=source
+ l include assembly m include macro expansions n omit forms processing s
+ include symbols =FILE list to FILE (must be last sub-option) </label>
+<label title="--alternate"><input type="checkbox" value="" name="--alternate" onchange="update()">initially turn on alternate macro syntax </label>
+<label title="--compress-debug-sections[={none|zlib|zlib-gnu|zlib-gabi|zstd}]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[{none|zlib|zlib-gnu|zlib-gabi|zstd}]" name="compress-debug-sections" disabled="disabled">compress DWARF debug sections Default: none </label>
+<label title="--nocompress-debug-sections"><input type="checkbox" value="" name="--nocompress-debug-sections" onchange="update()">don't compress DWARF debug sections </label>
+<label title="-D"><input type="checkbox" value="" name="-D" onchange="update()">produce assembler debugging messages </label>
+<label title="--dump-config"><input type="checkbox" value="" name="--dump-config" onchange="update()">display how the assembler is configured and then exit </label>
+<label title="--debug-prefix-map=OLD=NEW"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="OLD=NEW" name="debug-prefix-map" disabled="disabled">map OLD to NEW in debug information </label>
+<label title="--defsym=SYM=VAL"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="SYM=VAL" name="defsym" disabled="disabled">define symbol SYM to given value </label>
+<label title="--execstack"><input type="checkbox" value="" name="--execstack" onchange="update()">require executable stack for this object </label>
+<label title="--noexecstack"><input type="checkbox" value="" name="--noexecstack" onchange="update()">don't require executable stack for this object </label>
+<label title="--size-check=[error|warning]="><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[error|warning]=" name="size-check" disabled="disabled">ELF .size directive check (default --size-check=error) </label>
+<label title="--elf-stt-common=[no|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[no|yes]" name="elf-stt-common" disabled="disabled">(default: no) generate ELF common symbols with STT_COMMON type </label>
+<label title="--sectname-subst"><input type="checkbox" value="" name="--sectname-subst" onchange="update()">enable section name substitution sequences </label>
+<label title="--generate-missing-build-notes=[no|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[no|yes]" name="generate-missing-build-notes" disabled="disabled">(default: no) generate GNU Build notes if none are present in the input </label>
+<label title="--gsframe"><input type="checkbox" value="" name="--gsframe" onchange="update()">generate SFrame unwind info </label>
+<label title="-f"><input type="checkbox" value="" name="-f" onchange="update()">skip whitespace and comment preprocessing </label>
+<label title="--gen-debug"><input type="checkbox" value="" name="--gen-debug" onchange="update()">generate debugging information </label>
+<label title="--gstabs"><input type="checkbox" value="" name="--gstabs" onchange="update()">generate STABS debugging information </label>
+<label title="--gstabs+"><input type="checkbox" value="" name="--gstabs+" onchange="update()">generate STABS debug info with GNU extensions </label>
+<label title="--gdwarf-&lt;N&gt;"><input type="checkbox" value="" name="--gdwarf-&lt;N&gt;" onchange="update()">generate DWARF&lt;N&gt; debugging information. 2 &lt;=-&lt;N&gt; &lt;= 5 </label>
+<label title="--gdwarf-cie-version=N"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="N" name="gdwarf-cie-version" disabled="disabled">generate version 1, 3 or 4 DWARF CIEs </label>
+<label title="--gdwarf-sections"><input type="checkbox" value="" name="--gdwarf-sections" onchange="update()">generate per-function section names for DWARF line information </label>
+<label title="--hash-size=N"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="N" name="hash-size" disabled="disabled">ignored </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">show all assembler options </label>
+<label title="--target-help"><input type="checkbox" value="" name="--target-help" onchange="update()">show target specific options </label>
+<label title="-I=DIR"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="DIR" name="I" disabled="disabled">add DIR to search list for .include directives </label>
+<label title="-J"><input type="checkbox" value="" name="-J" onchange="update()">don't warn about signed overflow </label>
+<label title="-K"><input type="checkbox" value="" name="-K" onchange="update()">warn when differences altered for long displacements </label>
+<label title="--keep-locals"><input type="checkbox" value="" name="--keep-locals" onchange="update()">keep local symbols (e.g. starting with `L') </label>
+<label title="--mri"><input type="checkbox" value="" name="--mri" onchange="update()">assemble in MRI compatibility mode </label>
+<label title="--MD=FILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="FILE" name="MD" disabled="disabled">write dependency information in FILE (default none) </label>
+<label title="--multibyte-handling=method"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="method" name="multibyte-handling" disabled="disabled">what to do with multibyte characters encountered in the input </label>
+<label title="-nocpp"><input type="checkbox" value="" name="-nocpp" onchange="update()">ignored </label>
+<label title="-no-pad-sections"><input type="checkbox" value="" name="-no-pad-sections" onchange="update()">do not pad the end of sections to alignment boundaries </label>
+<label title="-o=OBJFILE"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="OBJFILE" name="o" disabled="disabled">name the object-file output OBJFILE (default a.out) </label>
+<label title="-R"><input type="checkbox" value="" name="-R" onchange="update()">fold data section into text section </label>
+<label title="--reduce-memory-overheads"><input type="checkbox" value="" name="--reduce-memory-overheads" onchange="update()">ignored </label>
+<label title="--statistics"><input type="checkbox" value="" name="--statistics" onchange="update()">print various measured statistics from execution </label>
+<label title="--strip-local-absolute"><input type="checkbox" value="" name="--strip-local-absolute" onchange="update()">strip local absolute symbols </label>
+<label title="--traditional-format"><input type="checkbox" value="" name="--traditional-format" onchange="update()">Use same format as native assembler when possible </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">print assembler version number and exit </label>
+<label title="-W"><input type="checkbox" value="" name="-W" onchange="update()">--no-warn suppress warnings </label>
+<label title="--warn"><input type="checkbox" value="" name="--warn" onchange="update()">don't suppress warnings </label>
+<label title="--fatal-warnings"><input type="checkbox" value="" name="--fatal-warnings" onchange="update()">treat warnings as errors </label>
+<label title="-w"><input type="checkbox" value="" name="-w" onchange="update()">ignored </label>
+<label title="-X"><input type="checkbox" value="" name="-X" onchange="update()">ignored </label>
+<label title="-Z"><input type="checkbox" value="" name="-Z" onchange="update()">generate object file even after errors </label>
+<label title="--listing-lhs-width"><input type="checkbox" value="" name="--listing-lhs-width" onchange="update()">set the width in words of the output data column of the listing </label>
+<label title="--listing-lhs-width2"><input type="checkbox" value="" name="--listing-lhs-width2" onchange="update()">set the width in words of the continuation lines of the output data column; ignored if smaller than the width of the first line </label>
+<label title="--listing-rhs-width"><input type="checkbox" value="" name="--listing-rhs-width" onchange="update()">set the max width in characters of the lines from the source file </label>
+<label title="--listing-cont-lines"><input type="checkbox" value="" name="--listing-cont-lines" onchange="update()">set the maximum number of continuation lines used for the output data column of the listing @FILE read options from FILE </label>
+<label title="-Qn"><input type="checkbox" value="" name="-Qn" onchange="update()">ignored </label>
+<label title="-V"><input type="checkbox" value="" name="-V" onchange="update()">print assembler version number </label>
+<label title="-k"><input type="checkbox" value="" name="-k" onchange="update()">ignored </label>
+<label title="-n"><input type="checkbox" value="" name="-n" onchange="update()">do not optimize code alignment </label>
+<label title="-O{012s}"><input type="checkbox" value="" name="-O{012s}" onchange="update()">attempt some code optimizations </label>
+<label title="-q"><input type="checkbox" value="" name="-q" onchange="update()">quieten some warnings </label>
+<label title="-s"><input type="checkbox" value="" name="-s" onchange="update()">ignored </label>
+<label title="--32/--64/--x32"><input type="checkbox" value="" name="--32/--64/--x32" onchange="update()">generate 32bit/64bit/x32 object </label>
+<label title="--divide"><input type="checkbox" value="" name="--divide" onchange="update()">ignored </label>
+<label title="-march=CPU[,+EXTENSION...]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="CPU[,+EXTENSION...]" name="march" disabled="disabled">generate
+ code for CPU and EXTENSION, CPU is one of: default, push, pop, 
+generic32, generic64, i386, i486, i586, i686, pentium, pentiumpro, 
+pentiumii, pentiumiii, pentium4, prescott, nocona, core, core2, corei7, 
+iamcu, k6, k6_2, athlon, opteron, k8, amdfam10, bdver1, bdver2, bdver3, 
+bdver4, znver1, znver2, znver3, znver4, btver1, btver2 EXTENSION is 
+combination of (possibly "no"-prefixed): 8087, 287, 387, 687, cmov, 
+fxsr, mmx, sse, sse2, sse3, sse4a, ssse3, sse4.1, sse4.2, sse4, avx, 
+avx2, avx512f, avx512cd, avx512er, avx512pf, avx512dq, avx512bw, 
+avx512vl, vmx, vmfunc, smx, xsave, xsaveopt, xsavec, xsaves, aes, 
+pclmul, fsgsbase, rdrnd, f16c, bmi2, fma, fma4, xop, lwp, movbe, cx16, 
+ept, lzcnt, popcnt, hle, rtm, tsx, invpcid, clflush, nop, syscall, 
+rdtscp, 3dnow, 3dnowa, padlock, svme, abm, bmi, tbm, adx, rdseed, 
+prfchw, smap, mpx, sha, clflushopt, prefetchwt1, se1, clwb, avx512ifma, 
+avx512vbmi, avx512_4fmaps, avx512_4vnniw, avx512_vpopcntdq, 
+avx512_vbmi2, avx512_vnni, avx512_bitalg, avx_vnni, clzero, mwaitx, 
+ospke, rdpid, ptwrite, ibt, shstk, gfni, vaes, vpclmulqdq, wbnoinvd, 
+pconfig, waitpkg, cldemote, amx_int8, amx_bf16, amx_fp16, amx_tile, 
+movdiri, movdir64b, avx512_bf16, avx512_vp2intersect, tdx, enqcmd, 
+serialize, rdpru, mcommit, sev_es, tsxldtrk, kl, widekl, uintr, hreset, 
+avx512_fp16, prefetchi, avx_ifma, avx_vnni_int8, cmpccxadd, wrmsrns, 
+msrlist, avx_ne_convert, rao_int, rmpquery, no87 </label>
+<label title="-mtune=CPU"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="CPU" name="mtune" disabled="disabled">optimize
+ for CPU, CPU is one of: generic32, generic64, i8086, i186, i286, i386, 
+i486, i586, i686, pentium, pentiumpro, pentiumii, pentiumiii, pentium4, 
+prescott, nocona, core, core2, corei7, iamcu, k6, k6_2, athlon, opteron,
+ k8, amdfam10, bdver1, bdver2, bdver3, bdver4, znver1, znver2, znver3, 
+znver4, btver1, btver2 </label>
+<label title="-msse2avx"><input type="checkbox" value="" name="-msse2avx" onchange="update()">encode SSE instructions with VEX prefix </label>
+<label title="-muse-unaligned-vector-move"><input type="checkbox" value="" name="-muse-unaligned-vector-move" onchange="update()">encode aligned vector move as unaligned vector move </label>
+<label title="-msse-check=[none|error|warning]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[none|error|warning]" name="msse-check" disabled="disabled">(default: warning) check SSE instructions </label>
+<label title="-moperand-check=[none|error|warning]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[none|error|warning]" name="moperand-check" disabled="disabled">(default: warning) check operand combinations for validity </label>
+<label title="-mavxscalar=[128|256]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[128|256]" name="mavxscalar" disabled="disabled">(default: 128) encode scalar AVX instructions with specific vector length </label>
+<label title="-mvexwig=[0|1]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[0|1]" name="mvexwig" disabled="disabled">(default: 0) encode VEX instructions with specific VEX.W value for VEX.W bit ignored instructions </label>
+<label title="-mevexlig=[128|256|512]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[128|256|512]" name="mevexlig" disabled="disabled">(default: 128) encode scalar EVEX instructions with specific vector length </label>
+<label title="-mevexwig=[0|1]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[0|1]" name="mevexwig" disabled="disabled">(default: 0) encode EVEX instructions with specific EVEX.W value for EVEX.W bit ignored instructions </label>
+<label title="-mevexrcig=[rne|rd|ru|rz]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[rne|rd|ru|rz]" name="mevexrcig" disabled="disabled">(default: rne) encode EVEX instructions with specific EVEX.RC value for SAE-only ignored instructions </label>
+<label title="-mmnemonic=[att|intel]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[att|intel]" name="mmnemonic" disabled="disabled">(default: att) use AT&amp;T/Intel mnemonic </label>
+<label title="-msyntax=[att|intel]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[att|intel]" name="msyntax" disabled="disabled">(default: att) use AT&amp;T/Intel syntax </label>
+<label title="-mindex-reg"><input type="checkbox" value="" name="-mindex-reg" onchange="update()">support pseudo index registers </label>
+<label title="-mnaked-reg"><input type="checkbox" value="" name="-mnaked-reg" onchange="update()">don't require `%' prefix for registers </label>
+<label title="-madd-bnd-prefix"><input type="checkbox" value="" name="-madd-bnd-prefix" onchange="update()">add BND prefix for all valid branches </label>
+<label title="-mshared"><input type="checkbox" value="" name="-mshared" onchange="update()">disable branch optimization for shared code </label>
+<label title="-mx86-used-note=[no|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[no|yes]" name="mx86-used-note" disabled="disabled">(default: no) generate x86 used ISA and feature properties </label>
+<label title="-momit-lock-prefix=[no|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[no|yes]" name="momit-lock-prefix" disabled="disabled">(default: no) strip all lock prefixes </label>
+<label title="-mfence-as-lock-add=[no|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[no|yes]" name="mfence-as-lock-add" disabled="disabled">(default: no) encode lfence, mfence and sfence as lock addl $0x0, (%{re}sp) </label>
+<label title="-mrelax-relocations=[no|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[no|yes]" name="mrelax-relocations" disabled="disabled">(default: yes) generate relax relocations </label>
+<label title="-malign-branch-boundary=NUM"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NUM" name="malign-branch-boundary" disabled="disabled">(default: 0) align branches within NUM byte boundary </label>
+<label title="-malign-branch=TYPE[+TYPE...]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="TYPE[+TYPE...]" name="malign-branch" disabled="disabled">(default: jcc+fused+jmp) TYPE is combination of jcc, fused, jmp, call, ret, indirect specify types of branches to align </label>
+<label title="-malign-branch-prefix-size=NUM"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="NUM" name="malign-branch-prefix-size" disabled="disabled">(default: 5) align branches with NUM prefixes per instruction </label>
+<label title="-mbranches-within-32B-boundaries"><input type="checkbox" value="" name="-mbranches-within-32B-boundaries" onchange="update()">align branches within 32 byte boundary </label>
+<label title="-mlfence-after-load=[no|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[no|yes]" name="mlfence-after-load" disabled="disabled">(default: no) generate lfence after load </label>
+<label title="-mlfence-before-indirect-branch=[none|all|register|memory]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[none|all|register|memory]" name="mlfence-before-indirect-branch" disabled="disabled">(default: none) generate lfence before indirect near branch </label>
+<label title="-mlfence-before-ret=[none|or|not|shl|yes]"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="[none|or|not|shl|yes]" name="mlfence-before-ret" disabled="disabled">(default: none) generate lfence before ret </label>
+<label title="-mamd64"><input type="checkbox" value="" name="-mamd64" onchange="update()">accept only AMD64 ISA [default] </label>
+<label title="-mintel64"><input type="checkbox" value="" name="-mintel64" onchange="update()">accept only Intel64 ISA </label>
+</form>
+<hr>
+<pre class="short"><code>Usage: x86_64-linux-gnu-as [option...] [asmfile...]
+Options:
+  -a[sub-option...]	  turn on listings
+                      	  Sub-options [default hls]:
+                      	  c      omit false conditionals
+                      	  d      omit debugging directives
+                      	  g      include general info
+                      	  h      include high-level source
+                      	  l      include assembly
+                      	  m      include macro expansions
+                      	  n      omit forms processing
+                      	  s      include symbols
+                      	  =FILE  list to FILE (must be last sub-option)
+  --alternate             initially turn on alternate macro syntax
+  --compress-debug-sections[={none|zlib|zlib-gnu|zlib-gabi|zstd}]
+                          compress DWARF debug sections
+		            Default: none
+  --nocompress-debug-sections
+                          don't compress DWARF debug sections
+  -D                      produce assembler debugging messages
+  --dump-config           display how the assembler is configured and then exit
+  --debug-prefix-map OLD=NEW
+                          map OLD to NEW in debug information
+  --defsym SYM=VAL        define symbol SYM to given value
+  --execstack             require executable stack for this object
+  --noexecstack           don't require executable stack for this object
+  --size-check=[error|warning]
+			  ELF .size directive check (default --size-check=error)
+  --elf-stt-common=[no|yes] (default: no)
+                          generate ELF common symbols with STT_COMMON type
+  --sectname-subst        enable section name substitution sequences
+  --generate-missing-build-notes=[no|yes] (default: no)
+                          generate GNU Build notes if none are present in the input
+  --gsframe               generate SFrame unwind info
+  -f                      skip whitespace and comment preprocessing
+  -g --gen-debug          generate debugging information
+  --gstabs                generate STABS debugging information
+  --gstabs+               generate STABS debug info with GNU extensions
+  --gdwarf-&lt;N&gt;            generate DWARF&lt;N&gt; debugging information. 2 &lt;= &lt;N&gt; &lt;= 5
+  --gdwarf-cie-version=&lt;N&gt; generate version 1, 3 or 4 DWARF CIEs
+  --gdwarf-sections       generate per-function section names for DWARF line information
+  --hash-size=&lt;N&gt;         ignored
+  --help                  show all assembler options
+  --target-help           show target specific options
+  -I DIR                  add DIR to search list for .include directives
+  -J                      don't warn about signed overflow
+  -K                      warn when differences altered for long displacements
+  -L,--keep-locals        keep local symbols (e.g. starting with `L')
+  -M,--mri                assemble in MRI compatibility mode
+  --MD FILE               write dependency information in FILE (default none)
+  --multibyte-handling=&lt;method&gt;
+                          what to do with multibyte characters encountered in the input
+  -nocpp                  ignored
+  -no-pad-sections        do not pad the end of sections to alignment boundaries
+  -o OBJFILE              name the object-file output OBJFILE (default a.out)
+  -R                      fold data section into text section
+  --reduce-memory-overheads ignored
+  --statistics            print various measured statistics from execution
+  --strip-local-absolute  strip local absolute symbols
+  --traditional-format    Use same format as native assembler when possible
+  --version               print assembler version number and exit
+  -W  --no-warn           suppress warnings
+  --warn                  don't suppress warnings
+  --fatal-warnings        treat warnings as errors
+  -w                      ignored
+  -X                      ignored
+  -Z                      generate object file even after errors
+  --listing-lhs-width     set the width in words of the output data column of
+                          the listing
+  --listing-lhs-width2    set the width in words of the continuation lines
+                          of the output data column; ignored if smaller than
+                          the width of the first line
+  --listing-rhs-width     set the max width in characters of the lines from
+                          the source file
+  --listing-cont-lines    set the maximum number of continuation lines used
+                          for the output data column of the listing
+  @FILE                   read options from FILE
+  -Qy, -Qn                ignored
+  -V                      print assembler version number
+  -k                      ignored
+  -n                      do not optimize code alignment
+  -O{012s}                attempt some code optimizations
+  -q                      quieten some warnings
+  -s                      ignored
+  --32/--64/--x32         generate 32bit/64bit/x32 object
+  --divide                ignored
+  -march=CPU[,+EXTENSION...]
+                          generate code for CPU and EXTENSION, CPU is one of:
+                           default, push, pop, generic32, generic64, i386, i486,
+                           i586, i686, pentium, pentiumpro, pentiumii,
+                           pentiumiii, pentium4, prescott, nocona, core, core2,
+                           corei7, iamcu, k6, k6_2, athlon, opteron, k8,
+                           amdfam10, bdver1, bdver2, bdver3, bdver4, znver1,
+                           znver2, znver3, znver4, btver1, btver2
+                          EXTENSION is combination of (possibly "no"-prefixed):
+                           8087, 287, 387, 687, cmov, fxsr, mmx, sse, sse2,
+                           sse3, sse4a, ssse3, sse4.1, sse4.2, sse4, avx, avx2,
+                           avx512f, avx512cd, avx512er, avx512pf, avx512dq,
+                           avx512bw, avx512vl, vmx, vmfunc, smx, xsave,
+                           xsaveopt, xsavec, xsaves, aes, pclmul, fsgsbase,
+                           rdrnd, f16c, bmi2, fma, fma4, xop, lwp, movbe, cx16,
+                           ept, lzcnt, popcnt, hle, rtm, tsx, invpcid, clflush,
+                           nop, syscall, rdtscp, 3dnow, 3dnowa, padlock, svme,
+                           abm, bmi, tbm, adx, rdseed, prfchw, smap, mpx, sha,
+                           clflushopt, prefetchwt1, se1, clwb, avx512ifma,
+                           avx512vbmi, avx512_4fmaps, avx512_4vnniw,
+                           avx512_vpopcntdq, avx512_vbmi2, avx512_vnni,
+                           avx512_bitalg, avx_vnni, clzero, mwaitx, ospke,
+                           rdpid, ptwrite, ibt, shstk, gfni, vaes, vpclmulqdq,
+                           wbnoinvd, pconfig, waitpkg, cldemote, amx_int8,
+                           amx_bf16, amx_fp16, amx_tile, movdiri, movdir64b,
+                           avx512_bf16, avx512_vp2intersect, tdx, enqcmd,
+                           serialize, rdpru, mcommit, sev_es, tsxldtrk, kl,
+                           widekl, uintr, hreset, avx512_fp16, prefetchi,
+                           avx_ifma, avx_vnni_int8, cmpccxadd, wrmsrns, msrlist,
+                           avx_ne_convert, rao_int, rmpquery, no87
+  -mtune=CPU              optimize for CPU, CPU is one of:
+                           generic32, generic64, i8086, i186, i286, i386, i486,
+                           i586, i686, pentium, pentiumpro, pentiumii,
+                           pentiumiii, pentium4, prescott, nocona, core, core2,
+                           corei7, iamcu, k6, k6_2, athlon, opteron, k8,
+                           amdfam10, bdver1, bdver2, bdver3, bdver4, znver1,
+                           znver2, znver3, znver4, btver1, btver2
+  -msse2avx               encode SSE instructions with VEX prefix
+  -muse-unaligned-vector-move
+                          encode aligned vector move as unaligned vector move
+  -msse-check=[none|error|warning] (default: warning)
+                          check SSE instructions
+  -moperand-check=[none|error|warning] (default: warning)
+                          check operand combinations for validity
+  -mavxscalar=[128|256] (default: 128)
+                          encode scalar AVX instructions with specific vector
+                           length
+  -mvexwig=[0|1] (default: 0)
+                          encode VEX instructions with specific VEX.W value
+                           for VEX.W bit ignored instructions
+  -mevexlig=[128|256|512] (default: 128)
+                          encode scalar EVEX instructions with specific vector
+                           length
+  -mevexwig=[0|1] (default: 0)
+                          encode EVEX instructions with specific EVEX.W value
+                           for EVEX.W bit ignored instructions
+  -mevexrcig=[rne|rd|ru|rz] (default: rne)
+                          encode EVEX instructions with specific EVEX.RC value
+                           for SAE-only ignored instructions
+  -mmnemonic=[att|intel] (default: att)
+                          use AT&amp;T/Intel mnemonic
+  -msyntax=[att|intel] (default: att)
+                          use AT&amp;T/Intel syntax
+  -mindex-reg             support pseudo index registers
+  -mnaked-reg             don't require `%' prefix for registers
+  -madd-bnd-prefix        add BND prefix for all valid branches
+  -mshared                disable branch optimization for shared code
+  -mx86-used-note=[no|yes] (default: no)
+                          generate x86 used ISA and feature properties
+  -momit-lock-prefix=[no|yes] (default: no)
+                          strip all lock prefixes
+  -mfence-as-lock-add=[no|yes] (default: no)
+                          encode lfence, mfence and sfence as
+                           lock addl $0x0, (%{re}sp)
+  -mrelax-relocations=[no|yes] (default: yes)
+                          generate relax relocations
+  -malign-branch-boundary=NUM (default: 0)
+                          align branches within NUM byte boundary
+  -malign-branch=TYPE[+TYPE...] (default: jcc+fused+jmp)
+                          TYPE is combination of jcc, fused, jmp, call, ret,
+                           indirect
+                          specify types of branches to align
+  -malign-branch-prefix-size=NUM (default: 5)
+                          align branches with NUM prefixes per instruction
+  -mbranches-within-32B-boundaries
+                          align branches within 32 byte boundary
+  -mlfence-after-load=[no|yes] (default: no)
+                          generate lfence after load
+  -mlfence-before-indirect-branch=[none|all|register|memory] (default: none)
+                          generate lfence before indirect near branch
+  -mlfence-before-ret=[none|or|not|shl|yes] (default: none)
+                          generate lfence before ret
+  -mamd64                 accept only AMD64 ISA [default]
+  -mintel64               accept only Intel64 ISA
+
+Report bugs to &lt;https://sourceware.org/bugzilla/&gt;</code></pre>
+
+
+</body></html>

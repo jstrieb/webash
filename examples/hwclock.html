@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>hwclock GUI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --main-fg: black;
+  --main-bg: white;
+}
+
+html {
+  width: 100vw;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+  background: var(--main-bg);
+  color: var(--main-fg);
+  font-family: monospace, monospace;
+}
+
+body {
+  padding: 0 5ch;
+  margin: 3em auto;
+  max-width: 100ch;
+}
+
+hr {
+  color: none;
+  background: none;
+  border: none;
+  border-top: 2px solid var(--main-fg);
+  margin: 2em 0;
+}
+
+pre,
+code,
+hr,
+label {
+  width: 100%;
+}
+
+summary {
+  cursor: pointer;
+}
+
+label {
+  /*
+    Strange tricks so wrapped text is indented and doesn't end up underneath
+    the checkboxes.
+  */
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+
+input[type="checkbox"],
+input[type="text"] {
+  margin-right: 2ch;
+}
+
+button {
+  margin: 0 1ch;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--main-bg);
+  padding: 1em 0;
+  margin: -1em -4ch;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sticky > p {
+  flex-grow: 1;
+}
+
+.short {
+  max-height: 20em;
+  overflow-y: auto;
+}
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.non-flag {
+  width: 100%;
+  margin: 0.5em 0;
+}
+</style>
+<script>
+function flag(s) {
+  if (s[0] === "-") {
+    return s;
+  }
+  return "-" + (s.length > 1 ? "-" : "") + s;
+}
+
+function update() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput) {
+        textInput.disabled = !checkbox.checked;
+      }
+    });
+
+  buildCommand();
+}
+
+function buildCommand() {
+  const command = "hwclock";
+  const flags = Array.from(document.querySelectorAll("label"))
+    .filter(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      return checkbox.checked;
+    })
+    .map(l => {
+      const textInput = l.querySelector("input[type='text']");
+      if (textInput && textInput.value) {
+        return [flag(textInput.name), "'" + textInput.value + "'"];
+      } else if (textInput) {
+        return flag(textInput.name);
+      } else {
+        const checkbox = l.querySelector("input[type='checkbox']");
+        return flag(checkbox.name);
+      }
+    })
+    .flat()
+    .join(" ");
+
+  const arguments = Array.from(document.querySelectorAll(".non-flag"))
+    .map(i => "'" + i.value + "'")
+    .join(" ");
+
+  const p = document.querySelector(".sticky > p");
+  p.innerText = command + " " + flags + " " + arguments;
+}
+
+function submitCommand() {
+  const flags = Array.from(document.querySelectorAll("label"))
+    .forEach(l => {
+      const checkbox = l.querySelector("input[type='checkbox']");
+      const textInput = l.querySelector("input[type='text']");
+      if (checkbox.checked && textInput && textInput.value === "") {
+        textInput.name = flag(textInput.name);
+      } else if (checkbox.checked && textInput && textInput.value !== "") {
+        textInput.name = textInput.name.replace(/^--*/, '');
+      }
+    });
+
+  Array.from(document.querySelectorAll(".non-flag"))
+    .forEach(i => {
+      i.name = i.value;
+      i.value = "";
+    });
+
+  document.querySelector("form").submit();
+}
+
+function addArgument() {
+  const form = document.querySelector("form");
+  const input = document.createElement("input");
+  input.className = "non-flag";
+  input.type = "text";
+  input.oninput = update;
+
+  const formInputs = form.querySelectorAll(".non-flag");
+  if (formInputs.length == 0) {
+    form.prepend(input);
+  } else {
+    formInputs[formInputs.length - 1]
+      .insertAdjacentElement("afterend", input);
+  }
+}
+</script>
+</head>
+<body>
+<div class="sticky">
+<p>hwclock</p>
+<button onclick="addArgument()">Add argument</button>
+<button onclick="submitCommand()">Run Command</button>
+</div>
+<form action="links/hwclock" method="GET" class="vbox">
+<label title="--show"><input type="checkbox" value="" name="--show" onchange="update()">display the RTC time </label>
+<label title="--get"><input type="checkbox" value="" name="--get" onchange="update()">display drift corrected RTC time </label>
+<label title="--set"><input type="checkbox" value="" name="--set" onchange="update()">set the RTC according to --date </label>
+<label title="--hctosys"><input type="checkbox" value="" name="--hctosys" onchange="update()">set the system time from the RTC </label>
+<label title="--systohc"><input type="checkbox" value="" name="--systohc" onchange="update()">set the RTC from the system time </label>
+<label title="--systz"><input type="checkbox" value="" name="--systz" onchange="update()">send timescale configurations to the kernel </label>
+<label title="--adjust"><input type="checkbox" value="" name="--adjust" onchange="update()">adjust the RTC to account for systematic drift </label>
+<label title="--param-get=param"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="param" name="param-get" disabled="disabled">display the RTC parameter </label>
+<label title="--param-set=param=&lt;value&gt;"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="param=&lt;value&gt;" name="param-set" disabled="disabled">set the RTC parameter </label>
+<label title="--predict"><input type="checkbox" value="" name="--predict" onchange="update()">predict the drifted RTC time according to --date </label>
+<label title="--utc"><input type="checkbox" value="" name="--utc" onchange="update()">the RTC timescale is UTC </label>
+<label title="--localtime"><input type="checkbox" value="" name="--localtime" onchange="update()">the RTC timescale is Local </label>
+<label title="--rtc=file"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="file" name="rtc" disabled="disabled">use an alternate file to /dev/rtc0 </label>
+<label title="--directisa"><input type="checkbox" value="" name="--directisa" onchange="update()">use the ISA bus instead of /dev/rtc0 access </label>
+<label title="--date=time"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="time" name="date" disabled="disabled">date/time input for --set and --predict </label>
+<label title="--delay=sec"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="sec" name="delay" disabled="disabled">delay used when set new RTC time </label>
+<label title="--update-drift"><input type="checkbox" value="" name="--update-drift" onchange="update()">update the RTC drift factor </label>
+<label title="--noadjfile"><input type="checkbox" value="" name="--noadjfile" onchange="update()">do not use /etc/adjtime </label>
+<label title="--adjfile=file"><input type="checkbox" onchange="update()"><input type="text" oninput="update()" placeholder="file" name="adjfile" disabled="disabled">use an alternate file to /etc/adjtime </label>
+<label title="--test"><input type="checkbox" value="" name="--test" onchange="update()">dry run; implies --verbose </label>
+<label title="--verbose"><input type="checkbox" value="" name="--verbose" onchange="update()">display more details </label>
+<label title="--help"><input type="checkbox" value="" name="--help" onchange="update()">display this help </label>
+<label title="--version"><input type="checkbox" value="" name="--version" onchange="update()">display version </label>
+<label title="-"><input type="checkbox" value="" name="-" onchange="update()">features: supported features (0x0) </label>
+<label title="-"><input type="checkbox" value="" name="-" onchange="update()">correction: time correction (0x1) </label>
+<label title="-"><input type="checkbox" value="" name="-" onchange="update()">bsm: backup switch mode (0x2) See Kernel's include/uapi/linux/rtc.h for parameters and values. </label>
+</form>
+<hr>
+<pre class="short"><code>
+Usage:
+ hwclock [function] [option...]
+
+Time clocks utility.
+
+Functions:
+ -r, --show                      display the RTC time
+     --get                       display drift corrected RTC time
+     --set                       set the RTC according to --date
+ -s, --hctosys                   set the system time from the RTC
+ -w, --systohc                   set the RTC from the system time
+     --systz                     send timescale configurations to the kernel
+ -a, --adjust                    adjust the RTC to account for systematic drift
+     --param-get &lt;param&gt;         display the RTC parameter
+     --param-set &lt;param&gt;=&lt;value&gt; set the RTC parameter
+     --predict                   predict the drifted RTC time according to --date
+
+Options:
+ -u, --utc                       the RTC timescale is UTC
+ -l, --localtime                 the RTC timescale is Local
+ -f, --rtc &lt;file&gt;                use an alternate file to /dev/rtc0
+     --directisa                 use the ISA bus instead of /dev/rtc0 access
+     --date &lt;time&gt;               date/time input for --set and --predict
+     --delay &lt;sec&gt;               delay used when set new RTC time
+     --update-drift              update the RTC drift factor
+     --noadjfile                 do not use /etc/adjtime
+     --adjfile &lt;file&gt;            use an alternate file to /etc/adjtime
+     --test                      dry run; implies --verbose
+ -v, --verbose                   display more details
+
+ -h, --help                      display this help
+ -V, --version                   display version
+
+Arguments:
+ &lt;param&gt; is either a numeric RTC parameter value or one of these aliases:
+   - features: supported features (0x0)
+   - correction: time correction (0x1)
+   - bsm: backup switch mode (0x2)
+   See Kernel's include/uapi/linux/rtc.h for parameters and values.
+
+ &lt;param&gt; and &lt;value&gt; accept hexadecimal values if prefixed with 0x, otherwise decimal.
+
+For more details see hwclock(8).</code></pre>
+
+
+</body></html>
