@@ -20,9 +20,10 @@ arg2name() {
 }
 
 arg2placeholder() {
+  # Using "*" instead of "\?" for compatibility with macOS sed
   sanitize "$(
     printf "%s\n" "${1}" \
-      | sed 's/[^=^\[]*\(\[\?\)=\(.*\)\]\?/\1\2/g'
+      | sed 's/[^=^\[]*\(\[*\)=\(.*\)\]*/\1\2/g'
   )"
 }
 
@@ -79,7 +80,11 @@ $(
   printf "%s\n" "${PATH}" \
     | tr ':' '\n' \
     | sed 's:^~:'"$(realpath ~)"':' \
-    | xargs -P 8 -I {} find {} -maxdepth 1 -type f -executable \
+    | xargs \
+        -P 8 \
+        -I {} \
+        sh -c 'find {} -maxdepth 1 -type f -executable \
+          || find {} -maxdepth 1 -type f -perm +0111' \
     | xargs -P 8 -I {} basename "{}" \
     | sort \
     | uniq \
@@ -116,19 +121,21 @@ fi
 
 ARGS_WITH_DESCRIPTIONS="$(
   printf "%s\n" "${HELP}" \
+    | tr -d '\r' \
     | tr '\n' '\r' \
     | sed 's/\r[[:space:]]*-/\n-/g' \
     | sed 's/\r\r/\n/g' \
     | tr '\r' '   ' \
     | sed 's/,  *-/,-/g' \
-    | sed 's/\(--\?[^ ][^ ]*\) \([^ ][^ ]*\)   */\1=\2  /g' \
+    | sed 's/\(--*[^ ][^ ]*\) \([^ ][^ ]*\)   */\1=\2  /g' \
     | grep '^[[:space:]]*-' \
     | grep -v '^\(- *\)\(- *\)*$' \
     | sed 's/[[:space:]][[:space:]]*/ /g' \
     | sed 's/^[[:space:]]*//g' \
     | sed 's/$/ /g' \
-    | sed ':label; s/<\([^>]*\) \([^>]*\)>/<\1-\2>/g; t label' \
-    | sed 's/\(--\?[^ ^=][^ ^=]*\)[ =]<\([^>][^>]*\)>/\1=\2/g'
+    | sed -e ':label' -e 's/<\([^>]*\) \([^>]*\)>/<\1-\2>/g
+        t label' \
+    | sed 's/\(--*[^ ^=][^ ^=]*\)[ =]<\([^>][^>]*\)>/\1=\2/g'
 )"
 
 ARGS="$(
@@ -343,7 +350,7 @@ EOF
 ARG_NUM=1
 for ARG in ${ARGS}; do
   DESCRIPTION="$(
-    printf "%s\n" "${DESCRIPTIONS}" | tail "+${ARG_NUM}" | head -n 1
+    printf "%s\n" "${DESCRIPTIONS}" | tail -n "+${ARG_NUM}" | head -n 1
   )"
 
   # Must use printf instead of echo in case one of the args is -e or -n
