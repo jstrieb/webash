@@ -97,6 +97,11 @@ EOF
   exit
 fi
 
+if [ "${1}" = "-h" ] || [ "${1}" = "--help" ]; then 
+  echo "Usage: ${0} [command] > ./output.html"
+  exit
+fi
+
 COMMAND="${1}"
 shift;
 
